@@ -259,8 +259,18 @@ const FEATURES = [
   ['torneo', 'Torneo del día', 'Cada día un minijuego: los 3 mejores cobran al café.'],
   ['duelos', 'Duelos', 'Retar a otro jugador a un minijuego con apuesta.'],
   ['cambio', 'Cambio de neveras', 'Final del sábado: 3 finalistas intercambian neveras y quien acabe con el táper, lo cobra.'],
+  ['paga_cafe', '☕ El último del mes invita al café', 'De quienes jueguen al menos 8 días, el que menos puntos haga en el mes paga el café del sábado (en la vida real).'],
+  ['pintadas', 'Pintadas en los baños', 'Mensajes anónimos con plantilla en la puerta de los baños (10 fichas, 1 al día).'],
+  ['pactos', 'Pacto de la Sangría', 'No agresión durante 48 h entre dos campistas; romperlo da botín ×3 y el mote «Judas».'],
+  ['recompensas', 'Carteles de «Se Busca»', 'Poner precio a la cabeza de alguien; el primero que le asalte se lo lleva.'],
+  ['porra', 'La Porra del Chiringuito', 'Un número del 1 al 20 al día; sorteo al café.'],
+  ['bar', 'Chat general del Bar', 'Conversación de todo el camping (el chat privado siempre está).'],
+  ['notas', 'Notas anónimas', 'Mensajes privados sin remitente (5 fichas).'],
+  ['roles_extra', 'Roles nuevos', 'Añade Cuñado, Chapuzas y Dominguero a los roles secretos (y pasan a ser 4).'],
+  ['objetos_extra', 'Objetos nuevos', 'Rastrillo, Candado de caravana y Pagar una ronda en la tienda.'],
 ];
 const feat = (k) => S.st?.group.features?.[k] !== false;
+const EXTRA_ITEMS = ['rastrillo', 'candado', 'ronda'];
 const ROLE_IMG = { cotilla: 'rol_cotilla', socorrista: 'rol_socorrista', alcalde: 'rol_alcalde', cunado: 'rol_alcalde', chapuzas: 'rol_socorrista', dominguero: 'rol_cotilla' };
 const ROLE_NAME = { cotilla: 'el Cotilla', socorrista: 'el Socorrista', alcalde: 'el Alcalde', cunado: 'el Cuñado', chapuzas: 'el Chapuzas', dominguero: 'el Dominguero' };
 const TARGET_ITEMS = ['linterna', 'cortar_luz', 'altavoz', 'mosquitos'];
@@ -279,9 +289,9 @@ const EFFECT_TEXT = {
   toalla: ['obj_toalla', 'Tienes la toalla puesta.'], perro: ['obj_perro', 'Tu perro vigila la parcela.'],
   descafeinado: ['obj_descafeinado', 'Tienes el descafeinado trampa preparado.'], coartada: ['obj_coartada', 'Tu próximo asalto será anónimo.'],
   chancla: ['obj_toalla', 'Tienes la chancla en la mano: quien te asalte recibirá un chanclazo (-15 fichas).'],
-  candado: ['obj_perro', 'Candado puesto (48 h): el Joputa no puede saquearte ni vaciarte la nevera.'],
-  rastrillo: ['ico_aviso', 'Rastrillo en el césped: si te asaltan, fracasará y el ladrón perderá 1 acción mañana.'],
-  rastrillazo: ['ico_aviso', 'Pisaste un rastrillo: hoy tienes 1 acción menos.'],
+  candado: ['obj_candado', 'Candado puesto (48 h): el Joputa no puede saquearte ni vaciarte la nevera.'],
+  rastrillo: ['obj_rastrillo', 'Rastrillo en el césped: si te asaltan, fracasará y el ladrón perderá 1 acción mañana.'],
+  rastrillazo: ['obj_rastrillo', 'Pisaste un rastrillo: hoy tienes 1 acción menos.'],
   chapa_cunado: ['ico_aviso', 'Chapa del Cuñado: hoy tienes 1 acción menos.'],
   luz: ['obj_cortar_luz', 'Te han cortado la luz: hoy cobras la mitad en el café.'], altavoz: ['obj_altavoz', 'Altavoz a tope: hoy ganas la mitad en minijuegos.'],
   mosquitos: ['obj_mosquitos', 'Mosquitos: no puedes jugar minijuegos hasta el café.'], sin_objetos: ['tr_tendedero', 'Te han escondido la ropa: hoy no puedes usar objetos.'],
@@ -502,7 +512,7 @@ function banners() {
     const img = { tormenta: 'ev_tormenta', inspeccion: 'ev_inspeccion', fiesta: 'ev_fiesta', mercadillo: 'ev_mercadillo', corte_agua: 'ev_corte_agua', karaoke: 'ev_fiesta', paella: 'ico_chiringuito' }[st.event.kind];
     out.push(`<div class="banner event"><img src="${IMG(img)}" alt=""><div><b>Hoy en el camping</b><div class="muted">${esc(st.event.text)}</div></div></div>`);
   }
-  const pendingPact = (st.pactos || []).find((p) => p.status === 'pendiente' && !p.is_mine);
+  const pendingPact = feat('pactos') && (st.pactos || []).find((p) => p.status === 'pendiente' && !p.is_mine);
   if (pendingPact) {
     out.push(`<div class="banner" style="background:#fff2f5;border:2px solid #800020">
       <span style="font-size:26px">🍷</span>
@@ -554,11 +564,12 @@ function encargoCard() {
 }
 
 function seBuscaCard() {
+  if (!feat('recompensas')) return '';
   const reqs = S.st?.recompensas || [];
   if (!reqs.length) return '';
   return `<div class="section-title">🤠 Cartel de «Se Busca»</div>
   <div class="card bounty-card">
-    <div class="muted" style="margin-bottom:6px">Asalta con éxito a estos campistas y cobra el bote acumulado:</div>
+    <div class="row" style="margin-bottom:6px"><img src="${IMG('ico_sebusca')}" alt="" style="width:52px;height:52px;object-fit:contain"><div class="muted grow">Asalta con éxito a estos campistas y cobra el bote acumulado:</div></div>
     <div class="bounty-list">
       ${reqs.map((r) => {
         const p = player(r.target_id);
@@ -574,7 +585,7 @@ function seBuscaCard() {
 }
 
 function porraCard() {
-  const p = S.st?.porra; if (!p) return '';
+  const p = S.st?.porra; if (!p || !feat('porra')) return '';
   const me = S.st.me;
   const total = me.nevera + me.chiringuito;
   const takenMap = {};
@@ -598,7 +609,7 @@ function porraCard() {
   return `<div class="section-title">🎟️ La Porra del Chiringuito</div>
   <div class="card porra-card">
     <div class="row">
-      <span style="font-size:32px">🎟️</span>
+      <img src="${IMG('ico_porra')}" alt="" style="width:56px;height:56px;object-fit:contain">
       <div class="grow">
         <b>Bote acumulado: <span class="porra-bote">${p.bote} fichas</span></b>
         <div class="muted">Elige un número del 1 al 20 por 10 fichas (cada número suma 10 al bote). Al café de las ${esc(S.st.group.cafe_time)} sale el premiado. Si nadie acierta, ¡el bote sigue para mañana!</div>
@@ -640,12 +651,13 @@ function viewCamping() {
 }
 
 function pintadasCard() {
+  if (!feat('pintadas')) return '';
   const st = S.st; const me = st.me;
   const list = st.pintadas || [];
   return `<div class="section-title">🚪 Puerta de los baños</div>
   <div class="card graffiti-board">
     <div class="row">
-      <div class="graffiti-door">🚪</div>
+      <img src="${IMG('ico_pintada')}" alt="" style="width:52px;height:64px;object-fit:contain">
       <div class="grow">
         <b>Puerta de los baños</b>
         <div class="muted">Pintadas anónimas de los campistas (10 fichas)</div>
@@ -882,7 +894,9 @@ function roleCards() {
 }
 
 function retosCard() {
-  const r = S.st.retos; if (!r.length) return '';
+  // v1.17b: el encargo del camping es un reto más
+  const enc = S.st.encargo?.code ? [{ text: S.st.encargo.text, reward: '15 fichas', done: S.st.encargo.done, code: 'encargo' }] : [];
+  const r = [...S.st.retos, ...enc]; if (!r.length) return '';
   return `<div class="section-title">Retos de hoy</div><div class="card">${r.map((x) => `
     <div class="item-row"><img src="${IMG(x.done ? 'ico_voto_si' : x.code === 'especial' ? 'ico_trofeo' : 'ico_cartel')}" alt="" style="width:40px;height:40px">
       <div class="grow"><b style="${x.done ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(x.text)}</b><div class="muted">Premio: ${esc(x.reward)}</div></div>
@@ -897,7 +911,6 @@ function viewJugar() {
   const noItems = me.effects.some((e) => e.kind === 'sin_objetos');
   const total = me.nevera + me.chiringuito;
   return `${roleCards()}
-  ${encargoCard()}
   ${torneoCard()}
   ${duelosCard()}
   ${misionCard()}
@@ -918,19 +931,19 @@ function viewJugar() {
 
   <div class="section-title">Tus objetos (${me.items.length}/3)</div>
   <div class="card">${me.items.length ? me.items.map((it) => `
-    <div class="item-row"><img src="${IMG(it.kind === 'chancla' ? 'obj_toalla' : it.kind === 'candado' ? 'obj_perro' : it.kind === 'rastrillo' ? 'ico_aviso' : 'obj_' + it.kind)}" alt=""><div class="grow"><b>${esc(it.name)}</b>${it.kind === 'chancla' ? '<div class="muted">Si te asaltan, contraatacas y quitas 15 fichas al ladrón</div>' : it.kind === 'candado' ? '<div class="muted">Inmune a saqueos y vaciados del Joputa durante 48 h</div>' : it.kind === 'rastrillo' ? '<div class="muted">Colócalo en tu parcela: bloquea el asalto, le quita 10 fichas al ladrón y le deja con 1 acción menos mañana</div>' : it.kind === 'megafono' ? `<div class="muted">${it.uses} usos · para replicar al loro</div>` : it.kind === 'punal' ? '<div class="muted">Tu voto a favor cuenta doble: en una acusación o en la hoguera</div>' : ''}</div>
+    <div class="item-row"><img src="${IMG(it.kind === 'chancla' ? 'obj_toalla' : it.kind === 'candado' ? 'obj_candado' : it.kind === 'rastrillo' ? 'obj_rastrillo' : 'obj_' + it.kind)}" alt=""><div class="grow"><b>${esc(it.name)}</b>${it.kind === 'chancla' ? '<div class="muted">Si te asaltan, contraatacas y quitas 15 fichas al ladrón</div>' : it.kind === 'candado' ? '<div class="muted">Inmune a saqueos y vaciados del Joputa durante 48 h</div>' : it.kind === 'rastrillo' ? '<div class="muted">Colócalo en tu parcela: bloquea el asalto, le quita 10 fichas al ladrón y le deja con 1 acción menos mañana</div>' : it.kind === 'megafono' ? `<div class="muted">${it.uses} usos · para replicar al loro</div>` : it.kind === 'punal' ? '<div class="muted">Tu voto a favor cuenta doble: en una acusación o en la hoguera</div>' : ''}</div>
       <button class="btn green" data-act="useItem" data-v="${it.id}" ${noActions || noItems ? 'disabled' : ''}>Usar</button></div>`).join('')
     : '<p class="muted" style="margin:0">No tienes objetos. Cómpralos, gánalos con retos o con una puntuación perfecta.</p>'}
     ${noItems ? '<p class="muted">Hoy no puedes usar objetos: te han escondido la ropa.</p>' : ''}</div>
 
   <div class="section-title">Tienda · 1 compra al día</div>
-  <div class="shop">${SHOP.filter(([k]) => k !== 'pista_falsificada' || feat('pistas_falsas')).map(([k, price, desc]) => {
+  <div class="shop">${SHOP.filter(([k]) => (k !== 'pista_falsificada' || feat('pistas_falsas')) && (!EXTRA_ITEMS.includes(k) || feat('objetos_extra'))).map(([k, price, desc]) => {
     const isSiesta = k === 'siesta';
     const isRonda = k === 'ronda';
     const dis = isSiesta
       ? (me.siesta_today || total < price)
       : (me.bought_today || (!isRonda && me.items.length >= 3) || total < price);
-    const ico = isSiesta ? 'tr_colchon' : isRonda ? 'ico_chiringuito' : k === 'chancla' ? 'obj_toalla' : k === 'candado' ? 'obj_perro' : k === 'rastrillo' ? 'ico_aviso' : 'obj_' + k;
+    const ico = isSiesta ? 'tr_colchon' : isRonda ? 'ico_chiringuito' : k === 'chancla' ? 'obj_toalla' : k === 'candado' ? 'obj_candado' : k === 'rastrillo' ? 'obj_rastrillo' : 'obj_' + k;
     return `<button data-act="buy" data-v="${k}" ${dis ? 'disabled' : ''}>
       <img src="${IMG(ico)}" alt=""><b>${ITEM_NAMES[k]}</b>
       <span class="price"><img src="${IMG('ico_ficha')}" alt="">${price}</span>
@@ -1029,18 +1042,17 @@ function viewChat() {
   const seenGen = Number(localStorage.getItem(`joputa.chat_gen.${S.groupId}`) || 0);
   const newGen = (st.chat?.last_gen_id || 0) > seenGen;
 
-  const seg = `
-  <div class="seg" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">
-    <button data-act="chatTab" data-v="general" aria-pressed="${S.chatTab === 'general'}">
-      🍻 Barra ${newGen ? '<span class="dot"></span>' : ''}
-    </button>
-    <button data-act="chatTab" data-v="direct" aria-pressed="${S.chatTab === 'direct'}">
-      💬 Privados ${unreadDirect > 0 ? `<span class="badge-count">${unreadDirect}</span>` : ''}
-    </button>
-    <button data-act="chatTab" data-v="extras" aria-pressed="${S.chatTab === 'extras'}">
-      🎱 Porra
-    </button>
-  </div>`;
+  // v1.17b: cada pestaña solo si su mecánica está activa (los privados, siempre)
+  const tabs = [
+    feat('bar') && ['general', `🍻 Barra ${newGen ? '<span class="dot"></span>' : ''}`],
+    ['direct', `💬 Privados ${unreadDirect > 0 ? `<span class="badge-count">${unreadDirect}</span>` : ''}`],
+    (feat('porra') || feat('pintadas')) && ['extras', feat('porra') ? '🎱 Porra' : '🚪 Pintadas'],
+  ].filter(Boolean);
+  if (!tabs.some(([k]) => k === S.chatTab)) S.chatTab = 'direct';
+  const seg = tabs.length > 1 ? `
+  <div class="seg" style="grid-template-columns:repeat(${tabs.length}, 1fr);margin-bottom:12px">
+    ${tabs.map(([k, label]) => `<button data-act="chatTab" data-v="${k}" aria-pressed="${S.chatTab === k}">${label}</button>`).join('')}
+  </div>` : '';
 
   // v1.17b: la porra y las pintadas viven en el Bar (la pestaña Jugar ya era muy larga)
   if (S.chatTab === 'extras') return `${banners()}${seg}${porraCard()}${pintadasCard()}`;
@@ -1069,6 +1081,7 @@ function renderGeneralChat() {
       ${msgs.length ? msgs.map(renderChatBubble).join('') : '<p class="muted" style="text-align:center;padding:24px 0">La barra está tranquila… ¡Empieza la conversación!</p>'}
     </div>
     <form class="chat-form" data-form="sendChat" data-target="">
+      ${feat('notas') ? `
       <div class="chat-anon-row">
         <label class="anon-label">
           <input type="checkbox" name="anon" id="anonCheck">
@@ -1076,6 +1089,7 @@ function renderGeneralChat() {
         </label>
         <span class="muted" style="font-size:11px">Remitente: «Campista Anónimo»</span>
       </div>
+      ` : ''}
       <div class="chat-input-row">
         <input type="text" name="body" class="chat-input" maxlength="350" placeholder="Escribe en la barra..." autocomplete="off" required>
         <button class="btn green chat-send-btn" type="submit">Enviar</button>
@@ -1165,6 +1179,7 @@ function renderDirectChat() {
       ${msgs.length ? msgs.map(renderChatBubble).join('') : `<p class="muted" style="text-align:center;padding:24px 0">Conversación vacía con ${esc(p.name)}.<br>Pactad en secreto o déjale una nota anónima.</p>`}
     </div>
     <form class="chat-form" data-form="sendChat" data-target="${p.id}">
+      ${feat('notas') ? `
       <div class="chat-anon-row">
         <label class="anon-label">
           <input type="checkbox" name="anon" id="anonCheck">
@@ -1172,6 +1187,7 @@ function renderDirectChat() {
         </label>
         <span class="muted" style="font-size:11px">No sabrá quién eres</span>
       </div>
+      ` : ''}
       <div class="chat-input-row">
         <input type="text" name="body" class="chat-input" maxlength="350" placeholder="Escribe un mensaje privado..." autocomplete="off" required>
         <button class="btn green chat-send-btn" type="submit">Enviar</button>
@@ -1223,14 +1239,17 @@ function viewRanking() {
   return `<div class="seg">${['hoy', 'semana', 'mes'].map((m) => `<button data-act="rank" data-v="${m}" aria-pressed="${mode === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>
   <div class="card"><p class="muted" style="margin-top:0">${mode === 'hoy' ? 'Fichas ganadas hoy. El primero al café gana 10 puntos y la Parcela VIP.' : mode === 'semana' ? 'Puntos de esta semana: 10, 7, 5, 3 y 1 por día, más acusaciones acertadas.' : 'Quien acabe el mes primero es el Campista del mes.'}</p>
     <ol class="rank">${list.map((p, i) => `<li class="${p.is_me ? 'me' : ''}"><span class="pos">${i + 1}</span><img src="${IMG(p.avatar)}" alt="">
-      <span>${esc(p.name)}${p.is_vip ? ' <span class="chip">VIP</span>' : ''}${p.mote ? ` <span class="chip chip-mote">${esc(p.mote)}</span>` : ''}</span><span class="pts">${p[key]} <small>${unit}</small></span></li>`).join('')}</ol></div>
+      <span>${esc(p.name)}${p.is_vip ? ' <span class="chip">VIP</span>' : ''}${p.mote ? ` <span class="chip chip-mote">${esc(p.mote)}</span>` : ''}${mode === 'mes' && st.cafe_mes?.id === p.id ? ' <span class="chip">☕ paga</span>' : ''}</span><span class="pts">${p[key]} <small>${unit}</small></span></li>`).join('')}</ol></div>
+  ${mode === 'mes' && feat('paga_cafe') ? `<div class="card row"><img src="${IMG('cartel_paga_cafe')}" alt="" style="width:56px;height:56px;object-fit:contain"><div class="grow">
+      <b>☕ El último del mes invita al café</b>
+      <div class="muted">${st.cafe_mes ? `Si el mes acabara hoy, pagaría <b>${esc(st.cafe_mes.name)}</b> (${st.cafe_mes.pts} pts).` : 'Todavía nadie ha jugado bastantes días.'} Cuenta quien haya jugado al menos ${st.cafe_mes && st.cafe_mes.min_dias < 8 ? `${st.cafe_mes.min_dias} días (a final de mes, 8)` : '8 días en el mes'}.</div></div></div>` : ''}
   ${st.summary ? `<div class="section-title">Semana pasada</div>${summaryCard()}` : ''}
   ${st.yesterday.length ? `<div class="section-title">Ayer</div><div class="card"><ol class="rank">${st.yesterday.slice(0, 3).map((r) => `
     <li><span class="pos">${r.position}</span><img src="${IMG(player(r.player_id)?.avatar || 'avatar_abuelo')}" alt=""><span>${esc(r.name)}</span><span class="pts">${r.net} <small>fichas</small></span></li>`).join('')}</ol></div>` : ''}
   ${titles.length ? `<div class="section-title">Títulos</div><div class="titles">${titles.map((t) => `
-    <div class="card"><img src="${IMG(t.kind === 'campista' ? 'cartel_campista_mes' : 'cartel_joputa_mes')}" alt="">
-      <b>${t.kind === 'campista' ? 'Campista' : 'Joputa'} del mes</b><div>${esc(t.name)}</div>
-      <div class="muted">${new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(t.month))} · ${t.value} ${t.kind === 'campista' ? 'pts' : 'fichas'}</div></div>`).join('')}</div>` : ''}`;
+    <div class="card"><img src="${IMG(t.kind === 'campista' ? 'cartel_campista_mes' : t.kind === 'cafe' ? 'cartel_paga_cafe' : 'cartel_joputa_mes')}" alt="">
+      <b>${t.kind === 'campista' ? 'Campista del mes' : t.kind === 'cafe' ? 'Invita al café ☕' : 'Joputa del mes'}</b><div>${esc(t.name)}</div>
+      <div class="muted">${new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(t.month))} · ${t.value} ${t.kind === 'joputa' ? 'fichas' : 'pts'}</div></div>`).join('')}</div>` : ''}`;
 }
 
 // ---------------------------------------------------------------- hojas
@@ -1289,13 +1308,13 @@ const SHEETS = {
       </button>
       ${hasPact
         ? `<button class="btn red" data-act="confirmTraicion" data-v="${p.id}" ${noAct ? 'disabled' : ''}>
-             <img src="${IMG('ico_chiringuito')}" alt="">🗡️ Traicionar Pacto de la Sangría
+             <img src="${IMG('ico_pacto')}" alt="">🗡️ Traicionar Pacto de la Sangría
              <span class="cost">⚡1 · Botín ×3 · Mote «Judas»</span></button>`
         : `<button class="btn orange" data-act="asalto" data-v="${p.id}" ${noAct || asaltado ? 'disabled' : ''}>
              <img src="${IMG('ico_chiringuito')}" alt="">${asaltado ? 'Ya le has asaltado hoy' : p.revenge ? '¡Venganza! Asaltar (botín doble)' : 'Asaltarle'}
              <span class="cost">⚡1 · ${p.is_vip ? 'gratis' : '5 fichas'}</span></button>`
       }
-      ${!pact ? `<button class="btn dark" data-act="pactoPropose" data-v="${p.id}" ${total < 20 ? 'disabled' : ''}>
+      ${!feat('pactos') ? '' : !pact ? `<button class="btn dark" data-act="pactoPropose" data-v="${p.id}" ${total < 20 ? 'disabled' : ''}>
           <span style="font-size:16px">🍷</span> Proponer Pacto de la Sangría
           <span class="cost">20 fichas · 48 h</span></button>`
         : pact.status === 'pendiente' && !pact.is_mine ? `<div class="btns two" style="margin:4px 0">
@@ -1305,9 +1324,9 @@ const SHEETS = {
         : pact.status === 'pendiente' && pact.is_mine ? `<p class="muted" style="margin:4px 0">🍷 Propuesta de sangría enviada (esperando respuesta).</p>`
         : ''
       }
-      <button class="btn orange" data-act="sheetBounty" data-v="${p.id}" ${total < 10 ? 'disabled' : ''}>
+      ${feat('recompensas') ? `<button class="btn orange" data-act="sheetBounty" data-v="${p.id}" ${total < 10 ? 'disabled' : ''}>
         <span style="font-size:16px">🤠</span> Poner precio a su cabeza (Se Busca)
-        <span class="cost">Mín. 10 fichas</span></button>
+        <span class="cost">Mín. 10 fichas</span></button>` : ''}
       ${isChapuzas ? `<button class="btn green" data-act="chapuzasReparar" data-v="${p.id}" ${st.secret_role.used ? 'disabled' : ''}>
           <span style="font-size:16px">🔧</span> Reparar parcela (+25 fichas)
           <span class="cost">${st.secret_role.used ? 'Ya usado esta semana' : '1 vez por semana'}</span></button>`
@@ -1411,7 +1430,8 @@ const SHEETS = {
       <p class="muted">Solo tú, como administrador, ves esta pantalla. Los cambios se anuncian en Noticias. Lo básico (minijuegos, asaltos, el Joputa, pistas y acusaciones) siempre está activo.</p>
       ${FEATURES.map(([k, name, desc]) => `<label class="toggle"><span><b>${name}</b><small class="muted">${desc}</small></span>
         <input type="checkbox" data-act="feature" data-v="${k}" ${g.features[k] ? 'checked' : ''}></label>`).join('')}
-      <p class="muted">Al apagar algo se para al momento. Al encenderlo: los roles se reparten enseguida; los eventos y las trastadas del camping vuelven la semana siguiente.</p>
+      <p class="muted">Al apagar algo se para al momento. Al encenderlo: los roles se reparten enseguida; los eventos y las trastadas del camping vuelven la semana siguiente. Nada se borra: lo apagado solo desaparece de la pantalla.</p>
+      <button class="btn dark block" data-act="planBasico">🏕️ Dejar solo lo básico</button>
       <button class="btn block" data-act="closeSheet">Hecho</button>`;
   },
   testCreate() {
@@ -1645,14 +1665,14 @@ const SHEETS = {
       </ul>`, false, feat('cambio'))}
     ${sec('🎭 Roles secretos', `
       <ul>
-        <li>Cada semana tres inocentes reciben un rol que solo ellos ven:
+        <li>Cada semana ${feat('roles_extra') ? 'cuatro' : 'tres'} inocentes reciben un rol que solo ellos ven:
           <ul>
             <li><b>Cotilla:</b> una vez, ve todo lo que hizo alguien ayer, incluido si robó en la misión.</li>
             <li><b>Socorrista:</b> sus guardias cuestan 1 acción y, si frustra al Joputa, gana también una pista de comportamiento.</li>
             <li><b>Alcalde:</b> su voto cuenta doble.</li>
-            <li><b>El Cuñado:</b> si le asaltan, le mete una chapa de una hora al asaltante, que tendrá 1 acción menos mañana.</li>
+            ${ifon('roles_extra', `<li><b>El Cuñado:</b> si le asaltan, le mete una chapa de una hora al asaltante, que tendrá 1 acción menos mañana.</li>
             <li><b>El Chapuzas:</b> una vez por semana repara la parcela de un vecino y le regala 25 fichas.</li>
-            <li><b>El Dominguero:</b> si al café está entre los 3 últimos del ranking diario, el camping le da una ayuda social de +15 fichas.</li>
+            <li><b>El Dominguero:</b> si al café está entre los 3 últimos del ranking diario, el camping le da una ayuda social de +15 fichas.</li>`)}
           </ul></li>
       </ul>`, false, feat('roles'))}
     ${sec('🍷 El Pacto de la Sangría', `
@@ -1660,24 +1680,29 @@ const SHEETS = {
         <li>Dos campistas pueden sellar un pacto bilateral de no agresión durante 48 h pagando 20 fichas cada uno.</li>
         <li>Durante el pacto no pueden asaltarse normalmente.</li>
         <li><b>Traición:</b> cualquier firmante puede romper el pacto asaltando a traición. Quien traiciona roba un <b>botín ×3</b>, pero recibe la deshonra pública del mote <b>«Judas del Camping»</b> para que todo el camping sepa de qué pie cojea.</li>
-      </ul>`)}
+      </ul>`, false, feat('pactos'))}
     ${sec('🤠 Cartel de «Se Busca»', `
       <ul>
         <li>¿Te cae mal alguien o va demasiado sobrado? Pon precio a su cabeza en el tablón de Se Busca (desde 10 fichas).</li>
         <li>Varios campistas pueden sumar fichas al bote sobre la misma persona.</li>
         <li>El primer campista que consiga asaltarle con éxito se lleva el bote íntegro acumulado.</li>
-      </ul>`)}
-    ${sec('📋 Encargos del Camping', `
+      </ul>`, false, feat('recompensas'))}
+    ${sec('📋 Encargo del día', `
       <ul>
-        <li>Cada mañana recibes una pequeña tarea del camping asignada al azar (hacer un asalto, jugar a un minijuego concreto, usar un objeto, etc.).</li>
-        <li>Al completarla ganas de inmediato <b>+15 fichas</b>.</li>
-      </ul>`)}
+        <li>Junto a los retos, cada día tienes un encargo al azar (asaltar, jugar, comprar, hacer guardia…). Al completarlo ganas <b>+15 fichas</b>.</li>
+      </ul>`, false, feat('retos'))}
+    ${sec('☕ El último del mes invita al café', `
+      <ul>
+        <li>Al acabar el mes, de quienes hayan jugado al menos 8 días, <b>el que menos puntos haya hecho invita al café</b> el sábado siguiente. En la vida real.</li>
+        <li>En Ranking → Mes ves quién lo pagaría si el mes acabara hoy.</li>
+        <li>Quien no llega a los días mínimos no cuenta: ni para ganar el mes ni para pagar.</li>
+      </ul>`, false, feat('paga_cafe'))}
     ${sec('🎟️ La Porra del Chiringuito', `
       <ul>
         <li>Cada día puedes comprar un número del 1 al 20 por 10 fichas. No puede haber dos campistas con el mismo número el mismo día.</li>
-        <li>Al café de las 16:00 se extrae el número ganador. Quien lo tenga se lleva todo el bote acumulado.</li>
-        <li>Si nadie tenía el número premiado, el bote <b>se acumula</b> para el día siguiente.</li>
-      </ul>`)}
+        <li>Al café se extrae el número ganador. Quien lo tenga se lleva todo el bote (empieza en 20 y cada número comprado suma 10).</li>
+        <li>Si nadie tenía el número premiado, el bote sigue para el día siguiente.</li>
+      </ul>`, false, feat('porra'))}
     ${sec('🦜 El loro', `
       <ul>
         <li>Tu primer fallo gordo del día en un minijuego, y el loro se burla de ti delante de todos.</li>
@@ -3221,6 +3246,7 @@ const ACTIONS = {
   sheetBounty: (v) => openSheet('bounty', v),
   putBounty: (v, el) => act('jp_recompensa_poner', { p_target: v, p_amount: Number(el.dataset.amt) }),
   buyPorra: (v) => act('jp_porra_comprar', { p_number: Number(v) }),
+  planBasico: async () => { await act('jp_plan_basico', {}); openSheet('features'); },
   chapuzasReparar: (v) => act('jp_chapuzas_reparar', { p_target: v }),
   guardia: (v) => act('jp_guardia', { p_target: v }),
   investigar: () => act('jp_investigar', {}),
