@@ -224,9 +224,8 @@ const PINTADAS_TEMPLATES = [
 const SHOP = [
   ['siesta', 50, 'Consigue 1 acción extra hoy. Máximo 1 al día.'],
   ['ronda', 40, 'Invitas a una ronda en el chiringuito (+5 fichas a todos los demás).'],
-  ['chancla', 70, 'La chancla: si te asaltan, contraatacas y quitas 15 fichas al ladrón (24 h).'],
   ['candado', 60, 'Candado de caravana: inmune a saqueos y vaciados del Joputa (48 h).'],
-  ['rastrillo', 45, 'Rastrillo en el césped: si te asaltan, lo pisa (¡CLONK!), fracasa el robo, pierde 10 fichas y 1 acción mañana.'],
+  ['rastrillo', 90, 'Rastrillo en el césped: si te asaltan, lo pisa (¡CLONK!), fracasa el robo, pierde 10 fichas y 1 acción mañana (24 h).'],
   ['toalla', 50, 'Bloquea el próximo asalto (24 h). Visible.'],
   ['altavoz', 50, 'Alguien gana la mitad en minijuegos hoy.'],
   ['linterna', 60, 'Ves las fichas exactas de alguien.'],
@@ -602,7 +601,7 @@ function porraCard() {
       <span style="font-size:32px">🎟️</span>
       <div class="grow">
         <b>Bote acumulado: <span class="porra-bote">${p.bote} fichas</span></b>
-        <div class="muted">Elige un número del 1 al 20 por 10 fichas. Al café de las 16:00 sale el premiado. Si nadie acierta, ¡se acumula!</div>
+        <div class="muted">Elige un número del 1 al 20 por 10 fichas (cada número suma 10 al bote). Al café de las ${esc(S.st.group.cafe_time)} sale el premiado. Si nadie acierta, ¡el bote sigue para mañana!</div>
       </div>
     </div>
     ${p.last_number ? `<p class="muted" style="margin:6px 0 2px">Ayer salió el <b>#${p.last_number}</b>${p.last_winner ? ` (¡ganó ${esc(p.last_winner)}!)` : ' (bote desierto)'}.</p>` : ''}
@@ -632,12 +631,11 @@ function viewCamping() {
     return `<button class="tag ${edge} ${p.is_me ? 'me' : ''} ${p.is_vip ? 'vip' : ''} ${p.active ? '' : 'zz'}" style="left:${x}%;top:${y}%" data-act="player" data-v="${p.id}">
       <img src="${IMG(p.avatar)}" alt=""><span class="nm">${p.active ? '' : '💤 '}${esc(p.name)}${p.mote ? `<small class="tag-mote">${esc(p.mote)}</small>` : ''}${bounty ? `<small class="tag-bounty">🤠 ${bounty.total_bounty}</small>` : ''}</span></button>`;
   };
-  return `${banners()}${encargoCard()}${S.st.clock.week_day <= 2 ? summaryCard() : ''}${campStrip()}
+  return `${banners()}${S.st.clock.week_day <= 2 ? summaryCard() : ''}${campStrip()}
   <div class="map-wrap"><img class="map" src="img/mapa.webp" alt="Mapa del camping" width="768" height="1376">
     ${onMap.map(tile).join('')}${onMap.map(tag).join('')}</div>
   ${rest.length ? `<div class="overflow-list">${rest.map((p) => `<button class="btn ghost block" data-act="player" data-v="${p.id}"><img src="${IMG(p.avatar)}" alt="">${esc(p.name)}</button>`).join('')}</div>` : ''}
   ${seBuscaCard()}
-  ${pintadasCard()}
   <p class="muted" style="text-align:center;margin-top:10px">Toca una parcela para asaltar, vigilar o acusar. La etiqueta naranja es la Parcela VIP: ganó el día de ayer y asaltarle sale gratis.</p>`;
 }
 
@@ -901,7 +899,6 @@ function viewJugar() {
   return `${roleCards()}
   ${encargoCard()}
   ${torneoCard()}
-  ${porraCard()}
   ${duelosCard()}
   ${misionCard()}
   ${retosCard()}
@@ -1033,15 +1030,20 @@ function viewChat() {
   const newGen = (st.chat?.last_gen_id || 0) > seenGen;
 
   const seg = `
-  <div class="seg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
+  <div class="seg" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">
     <button data-act="chatTab" data-v="general" aria-pressed="${S.chatTab === 'general'}">
-      🍻 El Bar ${newGen ? '<span class="dot"></span>' : ''}
+      🍻 Barra ${newGen ? '<span class="dot"></span>' : ''}
     </button>
     <button data-act="chatTab" data-v="direct" aria-pressed="${S.chatTab === 'direct'}">
-      💬 Cuchicheos ${unreadDirect > 0 ? `<span class="badge-count">${unreadDirect}</span>` : ''}
+      💬 Privados ${unreadDirect > 0 ? `<span class="badge-count">${unreadDirect}</span>` : ''}
+    </button>
+    <button data-act="chatTab" data-v="extras" aria-pressed="${S.chatTab === 'extras'}">
+      🎱 Porra
     </button>
   </div>`;
 
+  // v1.17b: la porra y las pintadas viven en el Bar (la pestaña Jugar ya era muy larga)
+  if (S.chatTab === 'extras') return `${banners()}${seg}${porraCard()}${pintadasCard()}`;
   if (S.chatTab === 'general') {
     return `${banners()}${seg}${renderGeneralChat()}`;
   } else {
@@ -1084,11 +1086,26 @@ function renderGeneralChat() {
 
 function renderDirectThreads() {
   const threads = S.chatThreads?.threads || [];
+  const an = S.chatThreads?.anon;
   return `
   <div class="card">
     <h3 style="margin-bottom:8px">Cuchicheos privados</h3>
     <p class="muted" style="margin-bottom:12px">Habla en secreto con otro campista o déjale una nota anónima en su caravana.</p>
     <div class="chat-thread-list">
+      ${an?.total ? `
+        <button class="chat-thread-item ${an.unread > 0 ? 'unread' : ''}" data-act="openDirect" data-v="anon">
+          <img src="${IMG('obj_pista_falsificada')}" alt="" class="thread-avatar">
+          <div class="thread-info">
+            <div class="thread-top">
+              <b class="thread-name">🕵️ Notas anónimas</b>
+              <span class="thread-time muted">${an.last_at ? fmtChatTime(an.last_at) : ''}</span>
+            </div>
+            <div class="thread-bottom">
+              <span class="thread-preview ${an.unread > 0 ? 'bold' : 'muted'}">${esc(an.last_msg || '')}</span>
+              ${an.unread > 0 ? `<span class="badge-count">${an.unread}</span>` : ''}
+            </div>
+          </div>
+        </button>` : ''}
       ${threads.length ? threads.map((t) => `
         <button class="chat-thread-item ${t.unread > 0 ? 'unread' : ''}" data-act="openDirect" data-v="${t.player_id}">
           <img src="${IMG(t.avatar)}" alt="" class="thread-avatar">
@@ -1099,7 +1116,7 @@ function renderDirectThreads() {
             </div>
             <div class="thread-bottom">
               <span class="thread-preview ${t.unread > 0 ? 'bold' : 'muted'}">
-                ${t.last_msg ? (t.last_is_anon ? '🕵️ Nota anónima: ' : t.last_is_me ? 'Tú: ' : '') + esc(t.last_msg) : 'Toca para iniciar una conversación'}
+                ${t.last_msg ? (t.last_is_me ? (t.last_is_anon ? 'Tú (anónima): ' : 'Tú: ') : '') + esc(t.last_msg) : 'Toca para iniciar una conversación'}
               </span>
               ${t.unread > 0 ? `<span class="badge-count">${t.unread}</span>` : ''}
             </div>
@@ -1110,7 +1127,26 @@ function renderDirectThreads() {
   </div>`;
 }
 
+function renderAnonInbox() {
+  const msgs = S.chatMessages || [];
+  return `
+  <div class="chat-wrap card">
+    <div class="chat-header direct">
+      <button class="btn sm ghost" data-act="backToThreads" style="padding:4px 8px">← Volver</button>
+      <img src="${IMG('obj_pista_falsificada')}" alt="" style="width:32px;height:32px;border-radius:50%">
+      <div class="grow">
+        <b>Notas anónimas</b>
+        <div class="muted" style="font-size:11px">Alguien te las ha dejado en la caravana. No se puede contestar.</div>
+      </div>
+    </div>
+    <div class="chat-log" id="chatLog">
+      ${msgs.length ? msgs.map(renderChatBubble).join('') : '<p class="muted" style="text-align:center;padding:24px 0">Ninguna nota… de momento.</p>'}
+    </div>
+  </div>`;
+}
+
 function renderDirectChat() {
+  if (S.chatTarget === 'anon') return renderAnonInbox();
   const p = player(S.chatTarget);
   if (!p) { S.chatTarget = null; return renderDirectThreads(); }
   const msgs = S.chatMessages || [];
@@ -1519,7 +1555,7 @@ const SHEETS = {
         <li>Tienes <b>5 acciones</b> al día.</li>
         <li><b>Torneo del día gratis:</b> tu primera partida del día al minijuego del torneo es <b>gratis</b> (no gasta acciones). Si quieres reintentar para mejorar marca, sí cuesta 1 acción.</li>
         <li><b>Siesta de 20 minutos:</b> en la tienda por 50 fichas ganas <b>+1 acción extra</b> para hoy (máximo 1 al día).</li>
-        <li><b>Rabia de campista:</b> si te asaltaron 2 o más veces ayer, si fuiste el más asaltado o si quedaste último en la clasificación diaria, amaneces con <b>+1 acción extra</b>.</li>
+        <li><b>Rabia de campista:</b> si te asaltaron 2 o más veces ayer o si quedaste último en la clasificación diaria, amaneces con <b>+1 acción extra</b>.</li>
         <li>Quien lleva <b>3 días sin abrir el juego</b> sale con 💤: no cuenta en las votaciones, no puede tocarle ser Joputa ni un rol, y no cobra de la hucha. Basta con abrir la app para volver.</li>
         <li><b>Minijuegos</b> (1 acción, 14 distintos: de puntería, reflejos, memoria, lógica y cotilleo): entre 5 y 25 fichas según lo bien que lo hagas. Con una puntuación casi perfecta, a veces ganas un objeto.</li>
         <li><b>Asaltar</b> (1 acción y 5 fichas, gratis a la Parcela VIP): le robas el 15 % de sus fichas (máx. 30). Solo te protegen los objetos. Solo una vez al día a la misma persona.</li>
@@ -1673,9 +1709,14 @@ const SHEETS = {
 function showDramaticReveal() {
   const st = S.st;
   const summary = st.summary;
-  const caught = st.week?.caught;
-  const caughtName = st.week?.caught_name || 'El Joputa';
-  const joputaPlayer = st.players.find((p) => p.pillado) || (caught ? st.players.find((p) => p.name === caughtName) : null) || st.players[0];
+  // v1.17b: el resumen es de la semana pasada; el Joputa sale de ahí (antes, si escapaba, se mostraba al primero de la lista)
+  const caught = !!summary?.caught;
+  const joputaPlayer = st.players.find((p) => p.id === summary?.joputa_id) || null;
+  const caughtName = joputaPlayer?.name || 'El Joputa';
+
+  // sospechosos: el Joputa de verdad y dos más, en orden aleatorio (antes eran los 3 primeros de la lista)
+  const mix = (a) => a.map((x) => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+  const suspects = mix([joputaPlayer, ...mix(st.players.filter((p) => p !== joputaPlayer)).slice(0, joputaPlayer ? 2 : 3)].filter(Boolean));
 
   let step = 1;
   const ov = document.createElement('div');
@@ -1704,7 +1745,7 @@ function showDramaticReveal() {
           <div class="destape-badge">☕ SOSPECHOSOS HABITUALES</div>
           <h2>El camping desconfiaba de...</h2>
           <div class="destape-suspects">
-            ${st.players.slice(0, 3).map((p) => `
+            ${suspects.map((p) => `
               <div class="destape-suspect-card">
                 <img src="${IMG(p.avatar)}" alt="">
                 <span>${esc(p.name)}</span>
@@ -1716,7 +1757,7 @@ function showDramaticReveal() {
         </div>
       `;
     } else if (step === 3) {
-      const isCaught = caught || summary?.lines?.some((l) => /pillad|chiv/i.test(l));
+      const isCaught = caught;
       if (isCaught) {
         SFX.buzzer();
       } else {
@@ -3100,8 +3141,18 @@ function openGame(kind, opts = {}) {
   });
 }
 
+// Repinta el chat sin perder el texto a medio escribir (el chat se refresca cada 4 s)
+function renderChat() {
+  const inp = document.querySelector('.chat-input'); const draft = inp?.value || '';
+  const focused = inp && document.activeElement === inp; const anon = document.getElementById('anonCheck')?.checked;
+  render();
+  const n = document.querySelector('.chat-input');
+  if (n) { n.value = draft; if (focused) n.focus(); }
+  const c = document.getElementById('anonCheck'); if (c && anon) c.checked = true;
+}
+
 async function loadChatMessages(silent = false) {
-  if (S.tab !== 'chat' || !S.groupId) return;
+  if (S.tab !== 'chat' || !S.groupId || S.chatTab === 'extras') return;
   try {
     if (S.chatTab === 'general') {
       const res = await api.rpc('jp_get_messages', { p_group: S.groupId, p_target: null });
@@ -3109,17 +3160,20 @@ async function loadChatMessages(silent = false) {
       const changed = JSON.stringify(newMsgs) !== JSON.stringify(S.chatMessages);
       S.chatMessages = newMsgs;
       if (changed || !silent) {
-        render();
+        renderChat();
         const el = document.getElementById('chatLog');
         if (el) el.scrollTop = el.scrollHeight;
       }
     } else if (S.chatTarget) {
-      const res = await api.rpc('jp_get_messages', { p_group: S.groupId, p_target: S.chatTarget });
+      // v1.17b: las notas anónimas recibidas tienen su propio buzón (sin remitente)
+      const res = S.chatTarget === 'anon'
+        ? await api.rpc('jp_anon_notes', { p_group: S.groupId })
+        : await api.rpc('jp_get_messages', { p_group: S.groupId, p_target: S.chatTarget });
       const newMsgs = res.messages || [];
       const changed = JSON.stringify(newMsgs) !== JSON.stringify(S.chatMessages);
       S.chatMessages = newMsgs;
       if (changed || !silent) {
-        render();
+        renderChat();
         const el = document.getElementById('chatLog');
         if (el) el.scrollTop = el.scrollHeight;
       }
@@ -3128,7 +3182,7 @@ async function loadChatMessages(silent = false) {
       const changed = JSON.stringify(res) !== JSON.stringify(S.chatThreads);
       S.chatThreads = res;
       if (changed || !silent) {
-        render();
+        renderChat();
       }
     }
   } catch (err) {

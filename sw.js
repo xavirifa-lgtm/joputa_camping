@@ -1,6 +1,6 @@
 // Service worker mínimo: guarda en caché la interfaz y las imágenes para que
 // la app abra rápido. Los datos del juego siempre se piden al servidor.
-const CACHE = 'joputa-v27';
+const CACHE = 'joputa-v28';
 const CORE = ['./', './?app=2026', 'index.html', 'styles.css', 'app.js', 'sigilo.js', 'config.js', 'joputa.webmanifest', 'manifest.webmanifest', 'img/mapa.webp', 'img/app_icon_192.png'];
 
 self.addEventListener('install', (e) => {

@@ -42,7 +42,7 @@ h1, h2, h3, .display { font-family: 'Baloo 2', 'Nunito', sans-serif; line-height
   padding: calc(8px + var(--safe-t)) 14px 8px;
   background: var(--sun);
   border-bottom: 3px solid var(--line);
-  display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+  display: grid; grid-template-columns: 1fr auto auto; gap: 6px 8px; align-items: center;   /* v1.17b: el botón ⛶ va en la misma fila */
 }
 .topbar .camp { font: 800 20px/1 'Baloo 2', 'Nunito', system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .cafe { font-weight: 800; font-size: 13px; background: var(--paper); border: 2px solid var(--line);
