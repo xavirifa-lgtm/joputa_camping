@@ -1,6 +1,6 @@
 // Service worker mínimo: guarda en caché la interfaz y las imágenes para que
 // la app abra rápido. Los datos del juego siempre se piden al servidor.
-const CACHE = 'joputa-v21';
+const CACHE = 'joputa-v22';
 const CORE = ['./', 'index.html', 'styles.css', 'app.js', 'sigilo.js', 'config.js', 'manifest.webmanifest', 'img/mapa.webp', 'img/app_icon_192.png'];
 
 self.addEventListener('install', (e) => {
@@ -15,14 +15,25 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // imágenes: caché primero; el resto: red primero (para recibir actualizaciones)
+  // imágenes: caché primero (solo válidas); el resto: red primero (para recibir actualizaciones)
   if (url.pathname.includes('/img/')) {
-    e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request).then((res) => {
-      const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res;
-    })));
+    e.respondWith(caches.match(e.request).then((r) => {
+      if (r && r.ok) return r;
+      return fetch(e.request).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      });
+    }));
   } else {
     e.respondWith(fetch(e.request).then((res) => {
-      const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res;
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+      }
+      return res;
     }).catch(() => caches.match(e.request)));
   }
 });
