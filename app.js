@@ -166,12 +166,12 @@ const GAMES = {
   mosquitos: { name: 'Cazar mosquitos', bg: 'bg_tienda', sprite: 'mj_raqueta', hint: 'Arrastra la raqueta eléctrica por la pantalla y fríe los mosquitos. Ojo con la vecina, que pasa de vez en cuando.' },
   hamacas: { name: 'Las hamacas', bg: 'bg_cafe', sprite: 'obj_toalla', hint: 'Como el Simón: mira el orden en que se iluminan las hamacas y repítelo. Cada ronda, una más.' },
   sardinas: { name: 'Sardinas a la plancha', bg: 'bg_pesca', sprite: 'sd_hecha', hint: 'Mueve la plancha para atrapar las sardinas. Tócalas para servirlas cuando estén doradas: si las dejas mucho, se queman.' },
-  ruta: { name: 'La ruta del camping', bg: 'bg_tienda', sprite: 'ico_cartel', hint: 'Pasa por todas las parcelas de un solo trazo y por los carteles en orden (1, 2, 3…). Arrastra el dedo desde el 1.' },
+  ruta: { name: 'La ruta del camping', bg: 'bg_tienda', sprite: 'ico_cartel', hint: 'Pasa por todas las parcelas de un solo trazo y por los carteles en orden (1, 2, 3…), esquivando las vallas de madera. Arrastra el dedo desde el 1.' },
   cotilleo: { name: 'Cotilleo exprés', bg: 'bg_cafe', sprite: 'rol_cotilla', hint: '5 preguntas sobre lo que ha pasado en el camping estos días. Cuanto antes contestes, más puntos.' },
   toallas: { name: 'Toallas en la piscina', bg: 'bg_tienda', sprite: 'obj_toalla', hint: 'Coloca todas las toallas en las tumbonas libres sin que sobre hueco. Toca una toalla, gírala si hace falta y toca dónde va.' },
   chiringuito: { name: 'La barra del chiringuito', bg: 'bg_cafe', sprite: 'ch_tinto', hint: 'Tres clientes a la vez. Arrastra hasta cada uno lo que pide (o toca la bebida y luego al cliente) antes de que se canse.' },
   sopa: { name: 'Sopa de letras', bg: 'bg_petanca', sprite: 'ico_pista', hint: 'Las palabras están escondidas: solo ves cuántas letras tienen. Van de izquierda a derecha, de arriba abajo o en diagonal ↘. Arrastra el dedo de la primera a la última letra.' },
-  papelera: { name: 'Encestar en la papelera', bg: 'bg_tienda', sprite: 'obj_pista_falsificada', hint: 'Arrastra hacia atrás y suelta para lanzar la bola de papel con efecto parabólico. Ojo con el giro en el aire y la fuerza del viento. 5 tiros.' },
+  papelera: { name: 'Encestar en la papelera', bg: 'bg_tienda', sprite: 'obj_pista_falsificada', hint: 'Arrastra hacia atrás y calcula la fuerza y el viento para encestar en la papelera. ¡Ojo con el viento lateral y los rebotes en el aro! 5 tiros.' },
   sombrilla: { name: 'Aguantar la sombrilla', bg: 'bg_pesca', sprite: 'mj_sombrilla', hint: 'Que no se vuele en 15 s: mantén pulsado «Sujeta» hacia el lado contrario al viento (o arrastra el dedo hacia ese lado) para que se quede recta.' },
 };
 const CAMPING_WORDS = ['Camping', 'Piscina', 'Hamaca', 'Toalla', 'Petanca', 'Sardina', 'Parcela', 'Caravana', 'Tienda', 'Café', 'Loro', 'Táper', 'Hoguera', 'Sombrilla', 'Linterna'];
@@ -296,6 +296,7 @@ const S = {
   view: 'boot', groups: [], groupId: localStorage.getItem('joputa.group'), st: null, tab: 'camping',
   rank: 'hoy', offset: 0, email: '', codeSent: false, onboard: 'join', avatar: AVATARS[0], busy: false,
   sheet: null, tr: { kind: null, target: null }, rec: { target: null, share: 30 }, feedAll: false, duelStake: 20,
+  chatTab: 'general', chatTarget: null, chatMessages: [], chatThreads: null,
 };
 let api;
 
@@ -303,6 +304,7 @@ let api;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tz = () => S.st?.group.tz || 'Europe/Madrid';
 const fmtTime = (iso) => new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: tz() }).format(new Date(iso));
+const fmtChatTime = (iso) => (iso ? new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: tz() }).format(new Date(iso)) : '');
 const fmtDay = (iso) => new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz() }).format(new Date(iso));
 const serverNow = () => new Date(Date.now() + S.offset);
 const player = (id) => S.st?.players.find((p) => p.id === id);
@@ -438,8 +440,20 @@ function renderGame() {
   const seenFeed = Number(localStorage.getItem(`joputa.seen.${S.groupId}`) || 0);
   const newFeed = st.feed.length && st.feed[0].id > seenFeed && S.tab !== 'feed';
   const voteDot = st.accusation?.can_vote && st.accusation.my_vote === null;
-  const tabs = [['camping', 'parcela_1_canadiense', 'Camping'], ['jugar', 'ico_accion', 'Jugar'],
-    ['pistas', 'ico_pista', 'Pistas', voteDot], ['feed', 'ico_aviso', 'Noticias', newFeed], ['ranking', 'ico_trofeo', 'Ranking']];
+
+  const seenGen = Number(localStorage.getItem(`joputa.chat_gen.${S.groupId}`) || 0);
+  const unreadDirect = st.chat?.unread_direct || 0;
+  const newGen = (st.chat?.last_gen_id || 0) > seenGen;
+  const chatDot = (unreadDirect > 0 || newGen) && S.tab !== 'chat';
+
+  const tabs = [
+    ['camping', 'parcela_1_canadiense', 'Camping'],
+    ['jugar', 'ico_accion', 'Jugar'],
+    ['chat', 'ico_chiringuito', 'El Bar', chatDot],
+    ['pistas', 'ico_pista', 'Pistas', voteDot],
+    ['feed', 'ico_aviso', 'Noticias', newFeed],
+    ['ranking', 'ico_trofeo', 'Ranking']
+  ];
   $app.innerHTML = `
   <header class="topbar">
     <button class="camp" data-act="menu" style="background:none;border:0;padding:0;text-align:left">${esc(st.group.name)} ▾</button>
@@ -451,11 +465,15 @@ function renderGame() {
     </div>
   </header>
   ${st.test ? `<button class="banner testbar" data-act="sheetTest"><span>🧪 <b>Prueba</b> · ${esc(fmtDay(st.clock.now))}, ${esc(fmtTime(st.clock.now))}${st.test.acting ? ` · juegas como <b>${esc(st.me.name)}</b>` : ''}</span><span class="testbtn">Panel</span></button>` : ''}
-  <main>${({ camping: viewCamping, jugar: viewJugar, pistas: viewPistas, feed: viewFeed, ranking: viewRanking })[S.tab]()}</main>
+  <main>${({ camping: viewCamping, jugar: viewJugar, chat: viewChat, pistas: viewPistas, feed: viewFeed, ranking: viewRanking })[S.tab]()}</main>
   <nav class="tabbar">${tabs.map(([k, ic, label, dot]) => `
     <button data-act="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}">
       <img src="${IMG(ic)}" alt="">${label}${dot ? '<span class="dot"></span>' : ''}</button>`).join('')}</nav>`;
   if (S.tab === 'feed' && st.feed.length) localStorage.setItem(`joputa.seen.${S.groupId}`, st.feed[0].id);
+  if (S.tab === 'chat') {
+    const el = document.getElementById('chatLog');
+    if (el) el.scrollTop = el.scrollHeight;
+  }
 }
 
 function banners() {
@@ -1006,6 +1024,142 @@ function hogueraCard() {
     ${me.punales > 0 && !h.my_punal ? `<label class="check"><input type="checkbox" data-act="hogueraPunal" ${S.hogueraPunal ? 'checked' : ''}> Clavar el puñal: mi voto cuenta doble (se gasta)</label>` : ''}</div>`;
 }
 
+// ---------------------------------------------------------------- chat / bar
+function viewChat() {
+  const st = S.st;
+  const unreadDirect = st.chat?.unread_direct || 0;
+  const seenGen = Number(localStorage.getItem(`joputa.chat_gen.${S.groupId}`) || 0);
+  const newGen = (st.chat?.last_gen_id || 0) > seenGen;
+
+  const seg = `
+  <div class="seg" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
+    <button data-act="chatTab" data-v="general" aria-pressed="${S.chatTab === 'general'}">
+      🍻 El Bar ${newGen ? '<span class="dot"></span>' : ''}
+    </button>
+    <button data-act="chatTab" data-v="direct" aria-pressed="${S.chatTab === 'direct'}">
+      💬 Cuchicheos ${unreadDirect > 0 ? `<span class="badge-count">${unreadDirect}</span>` : ''}
+    </button>
+  </div>`;
+
+  if (S.chatTab === 'general') {
+    return `${banners()}${seg}${renderGeneralChat()}`;
+  } else {
+    return `${banners()}${seg}${S.chatTarget ? renderDirectChat() : renderDirectThreads()}`;
+  }
+}
+
+function renderGeneralChat() {
+  if (S.st?.chat?.last_gen_id) {
+    localStorage.setItem(`joputa.chat_gen.${S.groupId}`, S.st.chat.last_gen_id);
+  }
+  const msgs = S.chatMessages || [];
+  return `
+  <div class="chat-wrap card">
+    <div class="chat-header">
+      <img src="${IMG('ico_chiringuito')}" alt="" style="width:28px;height:28px">
+      <div>
+        <b style="font-size:16px">La barra del Bar</b>
+        <div class="muted">Aquí se habla de todo: cotilleos, acusaciones y sospechas</div>
+      </div>
+    </div>
+    <div class="chat-log" id="chatLog">
+      ${msgs.length ? msgs.map(renderChatBubble).join('') : '<p class="muted" style="text-align:center;padding:24px 0">La barra está tranquila… ¡Empieza la conversación!</p>'}
+    </div>
+    <form class="chat-form" data-form="sendChat" data-target="">
+      <div class="chat-anon-row">
+        <label class="anon-label">
+          <input type="checkbox" name="anon" id="anonCheck">
+          <span>🕵️ Dejar nota anónima (5 🪙)</span>
+        </label>
+        <span class="muted" style="font-size:11px">Remitente: «Campista Anónimo»</span>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" name="body" class="chat-input" maxlength="350" placeholder="Escribe en la barra..." autocomplete="off" required>
+        <button class="btn green chat-send-btn" type="submit">Enviar</button>
+      </div>
+    </form>
+  </div>`;
+}
+
+function renderDirectThreads() {
+  const threads = S.chatThreads?.threads || [];
+  return `
+  <div class="card">
+    <h3 style="margin-bottom:8px">Cuchicheos privados</h3>
+    <p class="muted" style="margin-bottom:12px">Habla en secreto con otro campista o déjale una nota anónima en su caravana.</p>
+    <div class="chat-thread-list">
+      ${threads.length ? threads.map((t) => `
+        <button class="chat-thread-item ${t.unread > 0 ? 'unread' : ''}" data-act="openDirect" data-v="${t.player_id}">
+          <img src="${IMG(t.avatar)}" alt="" class="thread-avatar">
+          <div class="thread-info">
+            <div class="thread-top">
+              <b class="thread-name">${esc(t.name)} ${t.mote ? `<small class="tag-mote">${esc(t.mote)}</small>` : ''}</b>
+              <span class="thread-time muted">${t.last_at ? fmtChatTime(t.last_at) : ''}</span>
+            </div>
+            <div class="thread-bottom">
+              <span class="thread-preview ${t.unread > 0 ? 'bold' : 'muted'}">
+                ${t.last_msg ? (t.last_is_anon ? '🕵️ Nota anónima: ' : t.last_is_me ? 'Tú: ' : '') + esc(t.last_msg) : 'Toca para iniciar una conversación'}
+              </span>
+              ${t.unread > 0 ? `<span class="badge-count">${t.unread}</span>` : ''}
+            </div>
+          </div>
+        </button>
+      `).join('') : '<p class="muted">No hay otros campistas aún.</p>'}
+    </div>
+  </div>`;
+}
+
+function renderDirectChat() {
+  const p = player(S.chatTarget);
+  if (!p) { S.chatTarget = null; return renderDirectThreads(); }
+  const msgs = S.chatMessages || [];
+  return `
+  <div class="chat-wrap card">
+    <div class="chat-header direct">
+      <button class="btn sm ghost" data-act="backToThreads" style="padding:4px 8px">← Volver</button>
+      <img src="${IMG(p.avatar)}" alt="" style="width:32px;height:32px;border-radius:50%">
+      <div class="grow">
+        <b>${esc(p.name)}</b>
+        <div class="muted" style="font-size:11px">Cuchicheo privado ${p.active ? '· Activo' : '· Desconectado'}</div>
+      </div>
+      <button class="btn sm orange" data-act="player" data-v="${p.id}" style="padding:4px 8px">Parcela</button>
+    </div>
+    <div class="chat-log" id="chatLog">
+      ${msgs.length ? msgs.map(renderChatBubble).join('') : `<p class="muted" style="text-align:center;padding:24px 0">Conversación vacía con ${esc(p.name)}.<br>Pactad en secreto o déjale una nota anónima.</p>`}
+    </div>
+    <form class="chat-form" data-form="sendChat" data-target="${p.id}">
+      <div class="chat-anon-row">
+        <label class="anon-label">
+          <input type="checkbox" name="anon" id="anonCheck">
+          <span>🕵️ Dejar como Nota Anónima (5 🪙)</span>
+        </label>
+        <span class="muted" style="font-size:11px">No sabrá quién eres</span>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" name="body" class="chat-input" maxlength="350" placeholder="Escribe un mensaje privado..." autocomplete="off" required>
+        <button class="btn green chat-send-btn" type="submit">Enviar</button>
+      </div>
+    </form>
+  </div>`;
+}
+
+function renderChatBubble(m) {
+  const isMe = m.is_me;
+  const isAnon = m.is_anon;
+  return `
+  <div class="chat-msg ${isMe ? 'me' : 'other'} ${isAnon ? 'anon-bubble' : ''}">
+    ${!isMe ? `<img class="chat-avatar" src="${IMG(m.from_avatar || 'avatar_abuelo')}" alt="">` : ''}
+    <div class="chat-content">
+      <div class="chat-meta">
+        <span class="chat-author">${esc(m.from_name || 'Campista')}</span>
+        <span class="chat-ts">${fmtChatTime(m.created_at)}</span>
+      </div>
+      <div class="chat-body">${esc(m.body)}</div>
+    </div>
+    ${isMe ? `<img class="chat-avatar" src="${IMG(isAnon ? 'obj_pista_falsificada' : S.st.me.avatar)}" alt="">` : ''}
+  </div>`;
+}
+
 function viewFeed() {
   let lastDay = '';
   const all = S.feedAll;
@@ -1093,6 +1247,9 @@ const SHEETS = {
     const isChapuzas = st.secret_role?.role === 'chapuzas';
 
     return `${head}<div class="btns">
+      <button class="btn green block" data-act="openChatWith" data-v="${p.id}" style="margin-bottom:4px">
+        <span style="font-size:16px">💬</span> Cuchichear en privado con ${esc(p.name)}
+      </button>
       ${hasPact
         ? `<button class="btn red" data-act="confirmTraicion" data-v="${p.id}" ${noAct ? 'disabled' : ''}>
              <img src="${IMG('ico_chiringuito')}" alt="">🗡️ Traicionar Pacto de la Sangría
@@ -2529,11 +2686,35 @@ function openGame(kind, opts = {}) {
           if (!opts2.length) break;
           const deg = (x) => nb(x).filter((y) => !seen.has(y) && y !== x).length;
           const minDeg = Math.min(...opts2.map(deg));
-          const best = opts2.filter((x) => deg(x) === minDeg);     // sin sort aleatorio: igual en todos los navegadores
+          const best = opts2.filter((x) => deg(x) === minDeg);
           cur = best[Math.floor(rnd() * best.length)]; p.push(cur); seen.add(cur);
         }
         if (p.length === CELLS) path = p;
       }
+      // Generar barreras/vallas entre casillas adyacentes que no corten el camino de la solución
+      const pathEdges = new Set();
+      for (let i = 1; i < path.length; i++) {
+        const u = Math.min(path[i - 1], path[i]);
+        const v = Math.max(path[i - 1], path[i]);
+        pathEdges.add(`${u}_${v}`);
+      }
+      const wallCandidates = [];
+      for (let c = 0; c < CELLS; c++) {
+        for (const n of nb(c)) {
+          if (c < n && !pathEdges.has(`${c}_${n}`)) wallCandidates.push([c, n]);
+        }
+      }
+      const shuffledWalls = [...wallCandidates].sort(() => rnd() - 0.5);
+      const barriers = new Set();
+      const wallElements = [];
+      const numWalls = Math.min(10, shuffledWalls.length);
+      for (let i = 0; i < numWalls; i++) {
+        const [a, b] = shuffledWalls[i];
+        barriers.add(`${a}_${b}`);
+        const hor = Math.floor(b / N) !== Math.floor(a / N);
+        wallElements.push({ a, b, hor });
+      }
+
       // carteles: el 1 al principio, el último al final y 6 intermedios
       const marks = [0];
       for (let i = 1; i <= 6; i += 1) marks.push(Math.min(CELLS - 2, Math.round((i * (CELLS - 1)) / 7 + (rnd() - 0.5) * 3)));
@@ -2541,7 +2722,17 @@ function openGame(kind, opts = {}) {
       const uniq = [...new Set(marks)].sort((a, b) => a - b);
       const num = new Map(uniq.map((idx, i) => [path[idx], i + 1])); const LAST = uniq.length;
       stage.innerHTML = `<div class="zip"><div class="zip-grid">${Array.from({ length: CELLS }, (_, c) =>
-        `<div class="zc" data-c="${c}">${num.has(c) ? `<b>${num.get(c)}</b>` : ''}</div>`).join('')}</div><div class="zip-time">0 s</div></div>`;
+        `<div class="zc" data-c="${c}">${num.has(c) ? `<b>${num.get(c)}</b>` : ''}</div>`).join('')}
+        ${wallElements.map((w) => {
+          if (w.hor) {
+            const r = Math.floor(w.b / N); const k = w.a % N;
+            return `<div class="wall hor" style="left:${(k + 0.08) * (100 / N)}%;top:calc(${r * (100 / N)}% - 3px);width:${0.84 * (100 / N)}%;"></div>`;
+          } else {
+            const r = Math.floor(w.a / N); const k = w.b % N;
+            return `<div class="wall ver" style="top:${(r + 0.08) * (100 / N)}%;left:calc(${k * (100 / N)}% - 3px);height:${0.84 * (100 / N)}%;"></div>`;
+          }
+        }).join('')}
+      </div><div class="zip-time">0 s</div></div>`;
       const cells = [...stage.querySelectorAll('.zc')]; const grid = stage.querySelector('.zip-grid'); const clock = stage.querySelector('.zip-time');
       const t0 = performance.now(); let route = []; let down = false; let doneFlag = false;
       const timer = setInterval(() => { clock.textContent = `${Math.floor((performance.now() - t0) / 1000)} s`; }, 250);
@@ -2566,6 +2757,8 @@ function openGame(kind, opts = {}) {
         const at = route.indexOf(c);
         if (at >= 0) { route = route.slice(0, at + 1); draw(); return; }                       // recortar hasta ahí
         if (!nb(head).includes(c)) return;
+        const edgeKey = `${Math.min(head, c)}_${Math.max(head, c)}`;
+        if (barriers.has(edgeKey)) { SFX.thud(); vib(20); return; }                            // valla bloquea el paso
         if (num.has(c) && num.get(c) !== nextNum()) return;                                   // los números, en orden
         route.push(c); SFX.click(); vib(8); draw();
         if (route.length === CELLS && num.get(c) === LAST) {
@@ -2755,8 +2948,10 @@ function openGame(kind, opts = {}) {
       const pu = () => {
         if (a == null) return;
         const str = line.map((k) => grid[k]).join(''); const rev = [...str].reverse().join('');
+        const hit = words.find((o) => !o.found && (o.x === str || o.x === rev));
         if (hit) {
           hit.found = true;
+          line.forEach((k) => cellsEl[k].classList.add('found'));
           hit.cells.forEach((k) => cellsEl[k].classList.add('found'));
           drawList();
           SFX.coin();
@@ -2790,7 +2985,7 @@ function openGame(kind, opts = {}) {
       const box = stage.querySelector('.throw'); const bin = stage.querySelector('.bin'); const paper = stage.querySelector('.paper');
       const windEl = stage.querySelector('.wind'); const cnt = stage.querySelector('.cnt');
       const aimPath = stage.querySelector('.aim-path'); const aimTarget = stage.querySelector('.aim-target');
-      const plan = Array.from({ length: SHOTS }, (_, k) => ({ bx: rnd() < 0.5 ? 0.12 + rnd() * 0.14 : 0.74 + rnd() * 0.14, by: 0.32 + rnd() * 0.2, wind: (rnd() * 2 - 1) * (0.25 + k * 0.12) }));
+      const plan = Array.from({ length: SHOTS }, (_, k) => ({ bx: rnd() < 0.5 ? 0.12 + rnd() * 0.14 : 0.74 + rnd() * 0.14, by: 0.28 + rnd() * 0.22, wind: (rnd() * 2 - 1) * (0.42 + k * 0.22) }));
       let cur; let p; let start = null;
       const setup = () => {
         if (shot >= SHOTS) return finish(hits / SHOTS, `${hits} de ${SHOTS} canastas.`);
@@ -2815,27 +3010,16 @@ function openGame(kind, opts = {}) {
         const vx = (dx / r.width) * 3.2; const vy = (dy / r.height) * 3.4;
         if (Math.hypot(vx, vy) >= 0.12) {
           const pts = [{ x: p.x, y: p.y }];
-          let simX = p.x; let simY = p.y; let simVx = vx; let simVy = vy;
-          const simDt = 0.04; let crossedPt = null;
-          for (let i = 1; i <= 24; i++) {
-            simVx += cur.wind * 0.9 * simDt;
-            simVy += 1.7 * simDt;
-            const prevY = simY;
-            simX += simVx * simDt;
-            simY += simVy * simDt;
+          let simX = p.x; let simY = p.y;
+          const simDt = 0.035;
+          for (let i = 1; i <= 6; i++) {
+            simX += vx * simDt;
+            simY += (vy + 1.2 * i * simDt) * simDt;
             pts.push({ x: simX, y: simY });
-            if (!crossedPt && simVy > 0 && prevY < cur.by && simY >= cur.by) crossedPt = { x: simX, y: simY };
-            if (simY > 1.05 || simX < -0.15 || simX > 1.15) break;
           }
           const d = pts.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${(pt.x * 100).toFixed(1)} ${(pt.y * 100).toFixed(1)}`).join(' ');
           aimPath.setAttribute('d', d);
-          if (crossedPt) {
-            aimTarget.setAttribute('cx', (crossedPt.x * 100).toFixed(1));
-            aimTarget.setAttribute('cy', (crossedPt.y * 100).toFixed(1));
-            aimTarget.style.display = 'block';
-          } else {
-            aimTarget.style.display = 'none';
-          }
+          aimTarget.style.display = 'none';
           paper.style.transform = `translate(-50%, -50%) rotate(${Math.round((Math.atan2(dy, dx) * 180) / Math.PI)}deg) scale(1.05)`;
         } else {
           aimPath.setAttribute('d', '');
@@ -2863,12 +3047,12 @@ function openGame(kind, opts = {}) {
           paper.style.transform = `translate(-50%, -50%) rotate(${Math.round(rot)}deg) scale(${scale.toFixed(2)})`;
           if (!rimBounced && v.y > 0 && py < cur.by && p.y >= cur.by) {
             const dist = Math.abs(p.x - cur.bx);
-            if (dist <= 0.052) {
+            if (dist <= 0.034) {
               hits += 1; SFX.coin(); vib([25, 35, 25]);
               bin.classList.add('basket'); paper.className = 'paper in';
-              return end(true, dist < 0.022 ? '¡Limpia perfecta!' : '¡Canasta!');
-            } else if (dist <= 0.082) {
-              if (dist <= 0.065 && rnd() < 0.45) {
+              return end(true, dist < 0.018 ? '¡Limpia perfecta!' : '¡Canasta!');
+            } else if (dist <= 0.075) {
+              if (dist <= 0.052 && rnd() < 0.28) {
                 hits += 1; bin.classList.add('rim-hit'); SFX.thud(); vib([30, 20, 30]);
                 paper.className = 'paper in';
                 setTimeout(() => { bin.classList.add('basket'); end(true, '¡Toca aro y entra!'); }, 200);
@@ -2914,9 +3098,49 @@ function openGame(kind, opts = {}) {
   });
 }
 
+async function loadChatMessages(silent = false) {
+  if (S.tab !== 'chat' || !S.groupId) return;
+  try {
+    if (S.chatTab === 'general') {
+      const res = await api.rpc('jp_get_messages', { p_group: S.groupId, p_target: null });
+      const newMsgs = res.messages || [];
+      const changed = JSON.stringify(newMsgs) !== JSON.stringify(S.chatMessages);
+      S.chatMessages = newMsgs;
+      if (changed || !silent) {
+        render();
+        const el = document.getElementById('chatLog');
+        if (el) el.scrollTop = el.scrollHeight;
+      }
+    } else if (S.chatTarget) {
+      const res = await api.rpc('jp_get_messages', { p_group: S.groupId, p_target: S.chatTarget });
+      const newMsgs = res.messages || [];
+      const changed = JSON.stringify(newMsgs) !== JSON.stringify(S.chatMessages);
+      S.chatMessages = newMsgs;
+      if (changed || !silent) {
+        render();
+        const el = document.getElementById('chatLog');
+        if (el) el.scrollTop = el.scrollHeight;
+      }
+    } else {
+      const res = await api.rpc('jp_chat_threads', { p_group: S.groupId });
+      const changed = JSON.stringify(res) !== JSON.stringify(S.chatThreads);
+      S.chatThreads = res;
+      if (changed || !silent) {
+        render();
+      }
+    }
+  } catch (err) {
+    if (!silent) console.error('Chat error:', err);
+  }
+}
+
 // ---------------------------------------------------------------- eventos
 const ACTIONS = {
-  tab: (v) => { S.tab = v; closeSheet(); render(); window.scrollTo(0, 0); },
+  tab: (v) => { S.tab = v; closeSheet(); render(); window.scrollTo(0, 0); if (v === 'chat') loadChatMessages(); },
+  chatTab: (v) => { S.chatTab = v; S.chatTarget = null; render(); loadChatMessages(); },
+  openDirect: (v) => { S.chatTab = 'direct'; S.chatTarget = v; render(); loadChatMessages(); },
+  backToThreads: () => { S.chatTarget = null; render(); loadChatMessages(); },
+  openChatWith: (v) => { closeSheet(); S.tab = 'chat'; S.chatTab = 'direct'; S.chatTarget = v; render(); loadChatMessages(); },
   rank: (v) => { S.rank = v; render(); },
   feedAll: (v) => { S.feedAll = v === '1'; render(); },
   player: (v) => openSheet('player', v),
@@ -3090,6 +3314,20 @@ document.addEventListener('submit', async (e) => {
       history.replaceState(null, '', location.pathname);
       await loadGroups();
       if (kind === 'create') setTimeout(() => openSheet('menu'), 300);
+    } else if (kind === 'sendChat') {
+      const target = f.dataset.target ? f.dataset.target : null;
+      const body = (d.body || '').trim();
+      const anon = f.querySelector('#anonCheck')?.checked || false;
+      if (!body) return;
+      f.querySelector('input[name="body"]').value = '';
+      const r = await api.rpc('jp_send_message', { p_group: S.groupId, p_target: target, p_body: body, p_anon: anon });
+      if (r.cost > 0 && S.st?.me) S.st.me.chiringuito = Math.max(0, S.st.me.chiringuito - r.cost);
+      if (anon) {
+        const c = f.querySelector('#anonCheck');
+        if (c) c.checked = false;
+        toast('Nota anónima enviada (-5 fichas).');
+      }
+      await loadChatMessages();
     }
   } catch (err) { toast(err.message || 'Algo ha fallado.', true); }
 });
@@ -3177,6 +3415,7 @@ setInterval(() => {
   if (S.st && new Date(S.st.clock.next_close) <= serverNow() && !S.busy) refresh();
 }, 15000);
 setInterval(() => { if (document.visibilityState === 'visible' && S.view === 'game' && !S.sheet) refresh(); }, 45000);
+setInterval(() => { if (document.visibilityState === 'visible' && S.view === 'game' && S.tab === 'chat' && !S.sheet) loadChatMessages(true); }, 4000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.view === 'game') refresh(); });
 if ('serviceWorker' in navigator && !window.__JOPUTA_TEST_API__) navigator.serviceWorker.register('sw.js').catch(() => {});
 
