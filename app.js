@@ -458,6 +458,7 @@ function renderGame() {
   <header class="topbar">
     <button class="camp" data-act="menu" style="background:none;border:0;padding:0;text-align:left">${esc(st.group.name)} ▾</button>
     <span class="cafe" id="countdown">${countdown()}</span>
+    <button data-act="toggleFullscreen" title="Pantalla completa" style="background:none;border:0;color:inherit;font-size:16px;cursor:pointer;padding:0 4px;line-height:1;opacity:.85">⛶</button>
     <div class="stats">
       <div class="stat"><img src="${IMG('ico_ficha')}" alt="Fichas"><span>${me.nevera + me.chiringuito}<small> fichas</small></span></div>
       <div class="stat"><img src="${IMG('ico_trofeo')}" alt="Puntos"><span>${st.players.find((p) => p.is_me)?.points_week ?? 0}<small> pts</small></span></div>
@@ -1498,6 +1499,7 @@ const SHEETS = {
         ${st.test ? '<button class="btn dark block" data-act="sheetTest">🧪 Panel de pruebas</button>' : ''}
         ${g.is_admin ? '<button class="btn dark block" data-act="sheetTestCreate">🧪 Crear camping de prueba (admin)</button>' : ''}
         ${g.is_admin ? '<button class="btn dark block" data-act="sheetFeatures">⚙️ Mecánicas del camping (admin)</button><button class="btn dark block" data-act="sheetStats">📊 Actividad del camping (admin)</button><button class="btn dark block" data-act="sheetWords">🔤 Palabras de la sopa (admin)</button>' : ''}
+        <button class="btn ghost block" data-act="toggleFullscreen">📺 Pantalla completa (ocultar navegador)</button>
         <button class="btn ghost block" data-act="sheetAvatar"><img src="${IMG(st.me.avatar)}" alt="">Cambiar mi avatar</button>
         <button class="btn ghost block" data-act="help">Cómo se juega</button>
         ${S.groups.length > 1 ? S.groups.filter((x) => x.group_id !== S.groupId).map((x) => `<button class="btn ghost block" data-act="switchGroup" data-v="${x.group_id}">Ir a ${esc(x.name)}</button>`).join('') : ''}
@@ -3146,6 +3148,15 @@ const ACTIONS = {
   player: (v) => openSheet('player', v),
   closeSheet: () => closeSheet(),
   menu: () => openSheet('menu'),
+  toggleFullscreen: () => {
+    if (!document.fullscreenElement) {
+      const el = document.documentElement;
+      (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el).catch(() => {});
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)?.call(document).catch(() => {});
+    }
+    if (S.sheet?.fn === 'menu') closeSheet();
+  },
   help: () => openSheet('help'),
   asalto: (v) => act('jp_asalto', { p_target: v }),
   asaltoBetray: (v) => act('jp_asalto', { p_target: v, p_betray: true }),
