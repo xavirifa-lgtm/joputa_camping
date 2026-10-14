@@ -1,7 +1,7 @@
 {
   "id": "/joputa_camping/?v=2",
-  "name": "El Joputa del Camping",
-  "short_name": "Joputa",
+  "name": "El Joputa del Camping 2",
+  "short_name": "Joputa 2",
   "start_url": "./?v=2",
   "scope": "./",
   "display": "standalone",
