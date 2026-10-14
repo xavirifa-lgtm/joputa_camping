@@ -6,5 +6,5 @@ window.JOPUTA_CONFIG = {
   SUPABASE_URL: 'https://aleymkgtjufsbytmvpvm.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_VETJe1hX4sEqATqsslvG_w_OH0irN6J',
   // Clave pública VAPID para los avisos (ver README). Déjala vacía para desactivarlos.
-  VAPID_PUBLIC_KEY: '',
+  VAPID_PUBLIC_KEY: 'BAgVid3prCdNTdBTZqPku3-w-sN_0Puc3_wzaHb2CppsOXSG-L54Gy2U8LpS_Gv5nmD5S0hRLOFqgTPACgjR9sQ',
 };

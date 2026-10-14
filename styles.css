@@ -487,14 +487,17 @@ ol.rank.small li { padding: 4px 6px; }
 .mg .hammocks.simon .hm.lit { background: var(--c); box-shadow: 0 0 22px var(--c); transform: scale(1.08); }
 .mg .hammocks.simon .hm.lit img { opacity: 1; }
 /* sardinas a la plancha */
-.mg .sky.grill .plate { width: 40%; margin-left: -20%; padding: 0; background: none; border: 0; box-shadow: none; bottom: 2%; }
-.mg .sky.grill .plate > img { width: 100%; display: block; filter: drop-shadow(0 4px 0 rgba(0,0,0,.3)); }
+.mg .sky.grill .plate { width: 62%; margin-left: -31%; padding: 0; background: none; border: 0; box-shadow: none; bottom: 3%; }
+.mg .sky.grill .plate > img { width: 100%; display: block; filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)); }
 .mg .sky.grill .slots { position: absolute; inset: 0; }
-.mg .grilled { position: absolute; top: 18%; width: 22%; transform: rotate(90deg); cursor: pointer; transition: transform .2s; }
-.mg .grilled.ready { filter: drop-shadow(0 0 8px #FFE58A); transform: rotate(90deg) scale(1.15); }
-.mg .grilled.served { opacity: 0; transform: rotate(90deg) translateX(-80px); }
-.mg .sky.grill .sardine { width: 70px; margin-left: -35px; transform: rotate(90deg); }
-.mg .sky.grill .cnt { position: absolute; top: 6px; left: 0; right: 0; }
+.mg .grilled { position: absolute; top: 10%; width: 32%; height: 78%; object-fit: contain; transform: rotate(90deg); cursor: pointer; transition: transform .18s, filter .18s; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.mg .grilled::before { content: ''; position: absolute; inset: -18px; }
+.mg .grilled.ready { filter: drop-shadow(0 0 10px #FFD700) drop-shadow(0 0 5px #FF8800); transform: rotate(90deg) scale(1.18); animation: sardine-glow .4s infinite alternate ease-in-out; }
+@keyframes sardine-glow { from { transform: rotate(90deg) scale(1.14); } to { transform: rotate(90deg) scale(1.24); } }
+.mg .grilled.served { opacity: 0; transform: rotate(90deg) translateX(-100px) scale(0.7); }
+.mg .grilled.burnt { filter: grayscale(0.5) contrast(1.2) drop-shadow(0 0 8px rgba(0,0,0,.7)); }
+.mg .sky.grill .sardine { width: 78px; margin-left: -39px; transform: rotate(90deg); pointer-events: none; }
+.mg .sky.grill .cnt { position: absolute; top: 8px; left: 0; right: 0; font-size: 17px; }
 /* chiringuito */
 .mg .barra { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(94vw, 420px); align-items: end; min-height: 230px;
   background: linear-gradient(transparent 72%, #8B5A2B 72%, #6E4320 100%); border-radius: 14px; padding: 6px; position: relative; }
@@ -529,3 +532,491 @@ ol.rank.small li { padding: 4px 6px; }
 .mg .soup-words span.hid { letter-spacing: 2px; opacity: .85; }
 .mg .soup-words span.hid small { letter-spacing: 0; opacity: .7; }
 .mg .pc.nope { background: #F2A7A1; }
+
+/* v1.15b: que el minijuego nunca invada sus botones ni deje tocar lo de debajo */
+body.mg-open { overflow: hidden; }
+body.mg-open main, body.mg-open .tabbar, body.mg-open .topbar { pointer-events: none; }
+.mg { z-index: 200; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; overscroll-behavior: contain; }
+.mg .stage { min-height: 0; overflow: hidden; }
+.mg .ctrl, .mg .btns, .mg h2, .mg .hint, .mg .result { flex: none; }
+.mg img { -webkit-user-drag: none; -webkit-touch-callout: none; }
+.mg .hint { font-size: 14px; }
+@media (max-height: 700px) { .mg h2 { font-size: 24px; } .mg .hint { font-size: 12.5px; } .mg .result { font-size: 20px; min-height: 26px; } }
+/* avance */
+.mg .pq-help { font-size: 15px; padding: 0 6px; }
+/* café: cuándo sube y cuándo se quema */
+.mg .heat { position: relative; display: flex; width: min(86vw, 340px); height: 34px; border: 3px solid var(--line); border-radius: 999px; overflow: hidden; box-shadow: var(--shadow); font: 800 12px 'Nunito', system-ui, sans-serif; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.mg .heat .seg { display: grid; place-items: center; }
+.mg .heat .wait { background: #9a8f80; }
+.mg .heat .up { background: var(--pine); }
+.mg .heat .burn { flex: 1; background: var(--danger); }
+.mg .heat .mk { position: absolute; top: -4px; bottom: -4px; width: 8px; margin-left: -4px; background: #fff; border: 2px solid var(--line); border-radius: 4px; }
+@media (max-height: 700px) { .mg .stove { height: 160px; } .mg .stove .pot { width: 92px; bottom: 56px; } .mg .stove .fire { width: 70px; } }
+/* toallas: gente en las tumbonas */
+.mg .pc img { width: 86%; height: 86%; object-fit: contain; margin: auto; }
+/* papelera */
+.mg .throw .bin { top: 40%; width: 15%; transform: translate(-50%, -8%); font-size: 0; transition: transform .15s; }
+.mg .throw .bin svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.mg .throw .bin.basket { animation: bin-bounce .35s ease; }
+@keyframes bin-bounce {
+  0% { transform: translate(-50%, -8%) scale(1); }
+  35% { transform: translate(-50%, -2%) scale(1.15, 0.88); }
+  70% { transform: translate(-50%, -14%) scale(0.95, 1.05); }
+  100% { transform: translate(-50%, -8%) scale(1); }
+}
+.mg .throw .bin.rim-hit { animation: bin-shake .3s ease; }
+@keyframes bin-shake {
+  0%, 100% { transform: translate(-50%, -8%) rotate(0deg); }
+  25% { transform: translate(-55%, -8%) rotate(-6deg); }
+  75% { transform: translate(-45%, -8%) rotate(6deg); }
+}
+.mg .throw .paper { width: 34px; height: 34px; font-size: 0; pointer-events: none; }
+.mg .throw .paper svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+.mg .throw .paper.in { opacity: 0; transform: translate(-50%, -50%) scale(0.4) translateY(20px); transition: all .35s ease-in; }
+.mg .throw .aim-arc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+/* sombrilla */
+.mg .push { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.mg .push .btn { padding: 18px 8px; font-size: 18px; touch-action: none; }
+.mg .push .btn.on { background: var(--sun-deep); transform: scale(.97); }
+.mg .umb .tilt { position: absolute; bottom: 40px; left: 10%; right: 10%; height: 12px; border-radius: 999px; background: linear-gradient(90deg, var(--danger) 0 20%, #F5B700 20% 39%, var(--pine) 39% 61%, #F5B700 61% 80%, var(--danger) 80%); border: 2px solid var(--line); }
+.mg .umb .tilt b { position: absolute; top: -6px; width: 6px; height: 20px; margin-left: -3px; background: #fff; border: 2px solid var(--line); border-radius: 3px; }
+.mg .umb .pole { max-height: 70%; object-fit: contain; }
+
+/* v1.15c */
+/* explicaciones legibles sobre fondos claros: en un bocadillo */
+.mg h2 { color: #fff; text-shadow: 0 3px 0 var(--line), 2px 0 0 var(--line), -2px 0 0 var(--line), 0 -2px 0 var(--line), 0 0 10px rgba(0,0,0,.35); }
+.mg .hint { position: relative; margin: 6px 4px 10px; padding: 8px 12px; background: var(--paper); color: var(--ink, #3b2a1a); text-shadow: none; font-weight: 700;
+  border: 3px solid var(--line); border-radius: 16px; box-shadow: 0 4px 0 rgba(0,0,0,.25); line-height: 1.3; }
+.mg .hint::after { content: ''; position: absolute; left: 50%; bottom: -12px; width: 18px; height: 18px; margin-left: -9px; background: var(--paper);
+  border-right: 3px solid var(--line); border-bottom: 3px solid var(--line); transform: rotate(45deg); }
+.mg .result:not(:empty), .mg .cnt:not(:empty), .mg .wind:not(:empty), .mg .zip-time { width: fit-content; max-width: 96%; margin-left: auto; margin-right: auto;
+  background: rgba(43,33,24,.74); border-radius: 14px; padding: 3px 12px; }
+.mg .throw .wind, .mg .umb .wind { left: 50%; right: auto; transform: translateX(-50%); }
+.mg .throw .cnt, .mg .umb .cnt, .mg .sky.grill .cnt, .mg .barra .cnt { left: 50%; right: auto; transform: translateX(-50%); }
+/* montar el avance: mazo sobre la piqueta */
+.mg .avance .hammer { position: absolute; width: 48px; height: 64px; bottom: auto; transform: none; transition: left .15s, top .15s; z-index: 2; }
+.mg .avance .hammer svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 3px 0 rgba(0,0,0,.3)); transform-origin: 50% 90%; }
+.mg .avance .hammer.hit { animation: none; }
+.mg .avance .hammer.hit svg { animation: mallet .17s ease-in; }
+@keyframes mallet { 0% { transform: translateY(-16px) rotate(-8deg); } 70% { transform: translateY(6px); } 100% { transform: none; } }
+.mg .pq-row { overflow: visible; }
+/* café: la cafetera apoyada encima del hornillo, por delante del fuego */
+.mg .stove { height: 236px; width: 170px; }
+.mg .stove .fire { width: 80px; z-index: 1; }
+.mg .stove .pot { width: 100px; bottom: 96px; z-index: 2; }
+@media (max-height: 700px) { .mg .stove { height: 186px; } .mg .stove .fire { width: 64px; } .mg .stove .pot { width: 80px; bottom: 76px; } }
+/* chiringuito: la bebida que arrastras se ve por encima del minijuego */
+.drag-ghost { z-index: 300; }
+
+/* v1.15d: la piqueta se hunde en la tierra (lo que baja del suelo no se ve) */
+.mg .pq-row { overflow: hidden; height: 120px; background: linear-gradient(transparent 62%, #7A5A33 62%, #6A4C2A 100%); }
+.mg .pq { height: 62%; align-self: start; overflow: hidden; align-items: end; }
+.mg .pq img { width: 46px; display: block; }
+/* chiringuito sin franja marrón: el fondo ya tiene su barra */
+.mg .barra { background: none; }
+
+/* v1.16: Motes del Camping */
+.chip-mote {
+  background: #fdf2d0;
+  color: #7c4a03;
+  border: 1.5px solid #d4973b;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: .02em;
+  display: inline-block;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+.tag-mote {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #f7d894;
+  letter-spacing: .01em;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Pintadas en los Baños */
+.graffiti-board {
+  background: #f7eed8;
+  border: 3px solid #6d4b29;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 #4a341b, 0 8px 12px rgba(0,0,0,.15);
+  position: relative;
+  overflow: hidden;
+}
+.graffiti-door {
+  font-size: 32px;
+  line-height: 1;
+}
+.graffiti-wall {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.graffiti-item {
+  background: rgba(255,255,255,.65);
+  border: 2px dashed #a27b53;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.graffiti-text {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+  color: #4a2810;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.graffiti-date {
+  font-size: 11px;
+  color: #8c6a47;
+  white-space: nowrap;
+}
+.graffiti-preview {
+  background: #fff8e7;
+  border: 2px solid #8B5A2B;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+  text-align: center;
+}
+.graffiti-quote {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #3b220c;
+}
+
+/* Destape Dramático */
+.destape-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 12, 10, 0.92);
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+  animation: fadeIn .3s ease-out;
+}
+.destape-modal {
+  background: var(--paper, #fffbf2);
+  border: 4px solid var(--line, #4a3626);
+  border-radius: 24px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 10px 0 #2e2014, 0 16px 32px rgba(0,0,0,.6);
+  position: relative;
+  animation: popIn .35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.destape-badge {
+  display: inline-block;
+  background: var(--line, #4a3626);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+.destape-silhouette {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 14px auto;
+  border-radius: 50%;
+  background: #1c1510;
+  border: 4px solid #5a3d24;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8);
+}
+.destape-silhouette img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.2) contrast(1.5);
+}
+.destape-silhouette .question-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 72px;
+  font-weight: 900;
+  color: #f5b700;
+  text-shadow: 0 4px 8px rgba(0,0,0,.8);
+  animation: pulseQ 1.2s ease-in-out infinite alternate;
+}
+@keyframes pulseQ {
+  from { transform: scale(0.9); }
+  to { transform: scale(1.15); }
+}
+.destape-suspects {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.destape-suspect-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.destape-suspect-card img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--line, #4a3626);
+  background: #fff;
+}
+.destape-suspect-card span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink, #3b2a1a);
+}
+.destape-culprit {
+  position: relative;
+  margin: 12px 0;
+}
+.destape-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid var(--line, #4a3626);
+  background: #fff;
+  box-shadow: 0 6px 12px rgba(0,0,0,.3);
+  margin-bottom: 8px;
+}
+.stamp-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.stamp {
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  padding: 6px 16px;
+  border-radius: 8px;
+  transform: rotate(-14deg) scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,.35);
+  animation: stampSlam .3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+@keyframes stampSlam {
+  0% { transform: scale(3) rotate(-25deg); opacity: 0; }
+  100% { transform: scale(1.1) rotate(-14deg); opacity: 1; }
+}
+.stamp-caught {
+  color: #c92a2a;
+  border: 5px solid #c92a2a;
+  background: rgba(255, 230, 230, 0.9);
+}
+.stamp-escaped {
+  color: #2b8a3e;
+  border: 5px solid #2b8a3e;
+  background: rgba(230, 255, 235, 0.9);
+}
+.destape-lines {
+  background: rgba(0,0,0,.04);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 12px 0 16px;
+  font-size: 13.5px;
+  color: #4a3626;
+  text-align: left;
+}
+.destape-lines p { margin: 4px 0; }
+
+/* Duelos Head-to-Head */
+.h2h-card {
+  background: #2a1e17;
+  border: 3px solid #5a3d24;
+  border-radius: 16px;
+  padding: 14px 12px;
+  color: #fff;
+  margin-top: 8px;
+}
+.h2h-title {
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: .04em;
+  color: #f7d894;
+  margin-bottom: 8px;
+}
+.h2h-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 8px 0;
+}
+.h2h-col {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  min-width: 72px;
+}
+.h2h-col.h2h-winner {
+  background: rgba(46, 170, 78, 0.25);
+  border: 2px solid #38d9a9;
+}
+.h2h-col.h2h-loser {
+  background: rgba(240, 60, 60, 0.2);
+  border: 2px solid #ff8787;
+  opacity: .8;
+}
+.h2h-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  opacity: .75;
+}
+.h2h-num {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+.h2h-vs {
+  font-weight: 900;
+  font-size: 16px;
+  color: #f59f00;
+}
+.h2h-msg {
+  font-size: 12.5px;
+  color: #e0d5c1;
+  margin: 6px 0 0;
+}
+
+/* v1.17: Nuevas mecánicas de juego */
+/* Encargos diarios */
+.encargo-card {
+  border-left: 4px solid var(--sun-deep);
+  background: #fffdf5;
+}
+.encargo-card.done {
+  border-left-color: var(--pine-deep);
+  background: #f4faf6;
+}
+.encargo-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* Porra del chiringuito */
+.porra-card {
+  background: #faf8f5;
+  border: 2px solid #5a3e2b;
+}
+.porra-bote {
+  color: var(--sun-deep);
+  font-weight: 900;
+}
+.porra-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.porra-num {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  background: #fff;
+  border: 2px solid #c2b59b;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.porra-num b {
+  font-size: 15px;
+  color: var(--ink);
+}
+.porra-num small {
+  font-size: 9px;
+  color: #7a6e5d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.porra-num:hover:not(:disabled) {
+  border-color: var(--sun-deep);
+  background: #fff9e6;
+}
+.porra-num.mine {
+  background: #ebfbee;
+  border-color: #38d9a9;
+}
+.porra-num.mine b {
+  color: #087f5b;
+}
+.porra-num.taken {
+  background: #f1f3f5;
+  border-color: #ced4da;
+  opacity: .75;
+}
+
+/* Cartel de Se Busca */
+.bounty-card {
+  background: #fff9db;
+  border: 2px dashed #e67700;
+}
+.bounty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.bounty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.8);
+  border-radius: 10px;
+}
+.tag-bounty {
+  display: inline-block;
+  background: #e67700;
+  color: #fff;
+  font-weight: 800;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+.badge-bounty, .badge-pacto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+

@@ -5,6 +5,132 @@
 import * as SIG from './sigilo.js';
 
 const IMG = (n) => `img/${n}.webp`;
+
+// Web Audio API & Haptics procedural sound effects
+const vib = (pattern) => {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch (_) {}
+  }
+};
+
+const SFX = (() => {
+  let ctx = null;
+  const getCtx = () => {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) ctx = new AC();
+    }
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    return ctx;
+  };
+
+  const tone = (freq, type, dur, gainVal = 0.15, decay = true) => {
+    try {
+      const c = getCtx();
+      if (!c) return;
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, c.currentTime);
+      gain.gain.setValueAtTime(gainVal, c.currentTime);
+      if (decay) {
+        gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+      }
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.start();
+      osc.stop(c.currentTime + dur);
+    } catch (_) {}
+  };
+
+  return {
+    click: () => { tone(800, 'sine', 0.05, 0.05); vib(15); },
+    coin: () => {
+      try {
+        tone(987.77, 'sine', 0.12, 0.12);
+        setTimeout(() => tone(1318.51, 'sine', 0.25, 0.15), 80);
+        vib([20, 30, 20]);
+      } catch (_) {}
+    },
+    slap: () => {
+      try {
+        tone(180, 'triangle', 0.12, 0.25);
+        tone(80, 'sawtooth', 0.15, 0.3);
+        vib([50, 40, 60]);
+      } catch (_) {}
+    },
+    zap: () => {
+      try {
+        const c = getCtx();
+        if (!c) return;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200, c.currentTime);
+        osc.frequency.linearRampToValueAtTime(200, c.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.18, c.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, c.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start();
+        osc.stop(c.currentTime + 0.15);
+        vib(40);
+      } catch (_) {}
+    },
+    thud: () => {
+      tone(120, 'square', 0.08, 0.2);
+      vib(30);
+    },
+    fanfare: () => {
+      try {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((f, i) => {
+          setTimeout(() => tone(f, 'triangle', 0.2, 0.15), i * 90);
+        });
+        vib([30, 40, 50, 80]);
+      } catch (_) {}
+    },
+    buzzer: () => {
+      try {
+        tone(150, 'sawtooth', 0.35, 0.25);
+        vib([100, 50, 100]);
+      } catch (_) {}
+    },
+    drumroll: () => {
+      try {
+        const c = getCtx();
+        if (!c) return;
+        for (let i = 0; i < 12; i++) {
+          setTimeout(() => {
+            tone(100 + Math.random() * 40, 'triangle', 0.05, 0.1 + (i * 0.01));
+          }, i * 60);
+        }
+        vib([20, 20, 20, 20, 30, 30, 40, 50]);
+      } catch (_) {}
+    },
+    clonk: () => {
+      tone(220, 'square', 0.15, 0.35);
+      setTimeout(() => tone(110, 'sawtooth', 0.2, 0.4), 30);
+      vib([80, 50, 100]);
+    },
+    pour: () => {
+      tone(440, 'sine', 0.1, 0.1);
+      setTimeout(() => tone(554.37, 'sine', 0.12, 0.12), 70);
+      setTimeout(() => tone(659.25, 'sine', 0.18, 0.15), 140);
+      vib([20, 20, 40]);
+    },
+    boule: () => {
+      try {
+        tone(950, 'triangle', 0.05, 0.3);
+        setTimeout(() => tone(620, 'sine', 0.08, 0.2), 15);
+        vib(25);
+      } catch (_) {}
+    }
+  };
+})();
+
 const GAME_NAME = window.JOPUTA_CONFIG?.GAME_NAME || 'El Joputa del Camping';
 document.title = GAME_NAME;
 const $app = document.getElementById('app');
@@ -33,7 +159,7 @@ const SECRET_GAMES = {
     hint: 'Arrastra el dedo para llevar el táper hasta tu nevera. Que no te pille ninguna linterna y no pises ninguna lata. Para el 90 tienes que llegar en 30 s.' },
 };
 const GAMES = {
-  petanca: { name: 'Petanca', bg: 'bg_petanca', sprite: 'pt_bola_plata', hint: 'Tienes 3 bolas para arrimarte al boliche más que las 2 doradas del rival. Arrastra hacia atrás y suelta: cuanto más arrastras, más fuerte. Puedes bochar.' },
+  petanca: { name: 'Petanca', bg: 'bg_petanca', sprite: 'pt_bola_plata', hint: 'Tienes 3 bolas para arrimarte al boliche más que las 2 doradas del rival. Arrastra hacia atrás y suelta para lanzar en parábola: vuela por el aire, bota en la arena y rueda. ¡Puedes sobrevolar bolas o hacer un bochazo directo!' },
   aparcar: { name: 'Aparcar la caravana', bg: 'bg_tienda', sprite: 'ap_caravana', hint: 'Mete la caravana marcha atrás en la parcela. Ojo: hacia atrás, la caravana gira al revés que el volante. Sin tocar los setos ni la mesa; cada cono resta.' },
   tienda: { name: 'Montar el avance', bg: 'bg_tienda', sprite: 'mj_piqueta', hint: 'Clava las 6 piquetas del avance: dale al martillo cuando la marca esté en el verde. Dos martillazos buenos por piqueta; fuera del verde, se dobla.' },
   cafe: { name: 'Servir el café', bg: 'bg_cafe', sprite: 'mj_moka', hint: 'Quita la cafetera del fuego justo cuando suba el café (si esperas, se quema). Luego llena las 3 tazas hasta su raya manteniendo pulsado.' },
@@ -45,10 +171,14 @@ const GAMES = {
   toallas: { name: 'Toallas en la piscina', bg: 'bg_tienda', sprite: 'obj_toalla', hint: 'Coloca todas las toallas en las tumbonas libres sin que sobre hueco. Toca una toalla, gírala si hace falta y toca dónde va.' },
   chiringuito: { name: 'La barra del chiringuito', bg: 'bg_cafe', sprite: 'ch_tinto', hint: 'Tres clientes a la vez. Arrastra hasta cada uno lo que pide (o toca la bebida y luego al cliente) antes de que se canse.' },
   sopa: { name: 'Sopa de letras', bg: 'bg_petanca', sprite: 'ico_pista', hint: 'Las palabras están escondidas: solo ves cuántas letras tienen. Van de izquierda a derecha, de arriba abajo o en diagonal ↘. Arrastra el dedo de la primera a la última letra.' },
-  papelera: { name: 'Encestar en la papelera', bg: 'bg_tienda', sprite: 'obj_pista_falsificada', hint: 'Arrastra hacia atrás y suelta para lanzar la bola de papel. Ojo con el viento. 5 tiros.' },
-  sombrilla: { name: 'Aguantar la sombrilla', bg: 'bg_pesca', sprite: 'mj_sombrilla', hint: 'Que no se vuele 15 s: inclina el móvil hacia el lado contrario del viento, o arrastra el dedo hacia ese lado.' },
+  papelera: { name: 'Encestar en la papelera', bg: 'bg_tienda', sprite: 'obj_pista_falsificada', hint: 'Arrastra hacia atrás y suelta para lanzar la bola de papel con efecto parabólico. Ojo con el giro en el aire y la fuerza del viento. 5 tiros.' },
+  sombrilla: { name: 'Aguantar la sombrilla', bg: 'bg_pesca', sprite: 'mj_sombrilla', hint: 'Que no se vuele en 15 s: mantén pulsado «Sujeta» hacia el lado contrario al viento (o arrastra el dedo hacia ese lado) para que se quede recta.' },
 };
 const CAMPING_WORDS = ['Camping', 'Piscina', 'Hamaca', 'Toalla', 'Petanca', 'Sardina', 'Parcela', 'Caravana', 'Tienda', 'Café', 'Loro', 'Táper', 'Hoguera', 'Sombrilla', 'Linterna'];
+// Papelera de camping (de las de calle, en un poste) y bola de papel arrugada
+const SVG_BIN = '<svg viewBox="0 0 60 92" aria-hidden="true"><rect x="27" y="44" width="6" height="46" rx="2" fill="#8a5a2b" stroke="#4a3626" stroke-width="2.5"/><path d="M9 12 H51 L46 54 H14 Z" fill="#3f8f5a" stroke="#4a3626" stroke-width="3" stroke-linejoin="round"/><path d="M19 18 L21 50 M30 18 V50 M41 18 L39 50 M12 32 H48" stroke="#2f6f45" stroke-width="3" fill="none"/><rect x="5" y="6" width="50" height="8" rx="3" fill="#2f6f45" stroke="#4a3626" stroke-width="3"/><path d="M20 88 H40" stroke="#4a3626" stroke-width="3" stroke-linecap="round"/></svg>';
+const SVG_MALLET = '<svg viewBox="0 0 48 64" aria-hidden="true"><rect x="21" y="0" width="6" height="40" rx="2" fill="#c08a52" stroke="#4a3626" stroke-width="2.5"/><rect x="4" y="36" width="40" height="22" rx="6" fill="#5c6066" stroke="#4a3626" stroke-width="3"/><rect x="8" y="40" width="10" height="4" rx="2" fill="#8b9097"/></svg>';
+const SVG_PAPER = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L29 6 L36 13 L37 24 L32 33 L22 37 L12 35 L5 27 L4 16 L10 7 Z" fill="#fbfaf4" stroke="#4a3626" stroke-width="2.5" stroke-linejoin="round"/><path d="M11 12 L20 18 L28 11 M9 24 L19 22 L26 29 M20 18 L19 22 M27 19 L33 22 M15 30 L19 22" fill="none" stroke="#b9b2a2" stroke-width="2" stroke-linecap="round"/></svg>';
 const DRINKS = [['☕', 'Café solo'], ['🥛', 'Cortado'], ['🧊', 'Con hielo'], ['🍵', 'Manzanilla'], ['🍋', 'Limonada']];
 const RULES_TRIVIA = [
   ['¿Cuánto cuesta asaltar a alguien?', '5 fichas', ['10 fichas', '20 fichas', 'Nada']],
@@ -73,7 +203,30 @@ const soupWord = (w) => {
 const seeded = (seed) => () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
+const PINTADAS_TEMPLATES = [
+  '¡Cuidado con {target}, que por las noches ronda las tiendas ajenas!',
+  'Alguien ha visto a {target} bañándose a escondidas en la piscina a las 3 AM.',
+  'El táper del Joputa está escondido en la caravana de {target}.',
+  '{target} no se ha duchado desde que llegó al camping.',
+  'Se rumorea que {target} le echa agua al champú ajeno.',
+  'El loro del camping aprendió todas sus palabrotas de {target}.',
+  '¡Alguien le ha robado las chanclas a {target} y las ha tirado al tejado!',
+  '{target} ronca tan fuerte que hace temblar las piquetas de todo el camping.',
+  'Si buscas al Joputa, mira debajo de la tumbona de {target}.',
+  '¡No entréis al baño 3, {target} ha dejado un desastre!',
+  'El Joputa nos va a dejar a todos desplumados... ¡y nadie hace nada!',
+  'Se vende caravana embrujada a buen precio. Preguntar en recepción.',
+  '¡Menos sangría en el chiringuito y más limpiar los platos, guarros!',
+  'El socorrista de la piscina no sabe nadar, avisados quedáis.',
+  'Quien madruga... encuentra los baños limpios y el café caliente.',
+];
+
 const SHOP = [
+  ['siesta', 50, 'Consigue 1 acción extra hoy. Máximo 1 al día.'],
+  ['ronda', 40, 'Invitas a una ronda en el chiringuito (+5 fichas a todos los demás).'],
+  ['chancla', 70, 'La chancla: si te asaltan, contraatacas y quitas 15 fichas al ladrón (24 h).'],
+  ['candado', 60, 'Candado de caravana: inmune a saqueos y vaciados del Joputa (48 h).'],
+  ['rastrillo', 45, 'Rastrillo en el césped: si te asaltan, lo pisa (¡CLONK!), fracasa el robo, pierde 10 fichas y 1 acción mañana.'],
   ['toalla', 50, 'Bloquea el próximo asalto (24 h). Visible.'],
   ['altavoz', 50, 'Alguien gana la mitad en minijuegos hoy.'],
   ['linterna', 60, 'Ves las fichas exactas de alguien.'],
@@ -85,6 +238,8 @@ const SHOP = [
   ['pista_falsificada', 300, 'Envía una pista falsa como si fuera del juego. 1 por semana en todo el camping.'],
 ];
 const ITEM_NAMES = {
+  siesta: 'Siesta de 20 minutos', ronda: 'Pagar una ronda', chancla: 'La Chancla', candado: 'Candado de caravana',
+  rastrillo: 'Rastrillo en el césped',
   toalla: 'Toalla en la hamaca', altavoz: 'Altavoz a tope', linterna: 'Linterna', cortar_luz: 'Cortar la luz',
   mosquitos: 'Enjambre de mosquitos', descafeinado: 'Descafeinado', perro: 'Perro del camping', coartada: 'Coartada',
   ampliar_nevera: 'Ampliar la nevera', pista_falsificada: 'Pista falsificada', megafono: 'Megáfono', punal: 'Puñal',
@@ -98,7 +253,7 @@ const FEATURES = [
   ['retos', 'Retos diarios', 'Los 3 retos del día y el reto especial semanal.'],
   ['loro', 'El loro y sus burlas', 'Burlas al fallar un minijuego y réplicas.'],
   ['mision', 'Misión, hucha y hoguera', 'Misión semanal, sabotaje, hucha y hoguera del sábado.'],
-  ['roles', 'Roles secretos', 'Cotilla, Socorrista y Alcalde.'],
+  ['roles', 'Roles secretos', 'Cotilla, Socorrista, Alcalde, Cuñado, Chapuzas y Dominguero.'],
   ['enfermeria', 'Enfermería', 'La trastada que deja a alguien sin votar.'],
   ['trastadas_camping', 'Trastadas del camping', 'Las 1-3 trastadas al azar que hace el propio camping.'],
   ['sospechas', 'Sospecha diaria', 'Señalar cada día a quien crees que es el Joputa; puntúa el sábado.'],
@@ -107,8 +262,8 @@ const FEATURES = [
   ['cambio', 'Cambio de neveras', 'Final del sábado: 3 finalistas intercambian neveras y quien acabe con el táper, lo cobra.'],
 ];
 const feat = (k) => S.st?.group.features?.[k] !== false;
-const ROLE_IMG = { cotilla: 'rol_cotilla', socorrista: 'rol_socorrista', alcalde: 'rol_alcalde' };
-const ROLE_NAME = { cotilla: 'el Cotilla', socorrista: 'el Socorrista', alcalde: 'el Alcalde' };
+const ROLE_IMG = { cotilla: 'rol_cotilla', socorrista: 'rol_socorrista', alcalde: 'rol_alcalde', cunado: 'rol_alcalde', chapuzas: 'rol_socorrista', dominguero: 'rol_cotilla' };
+const ROLE_NAME = { cotilla: 'el Cotilla', socorrista: 'el Socorrista', alcalde: 'el Alcalde', cunado: 'el Cuñado', chapuzas: 'el Chapuzas', dominguero: 'el Dominguero' };
 const TARGET_ITEMS = ['linterna', 'cortar_luz', 'altavoz', 'mosquitos'];
 
 const TRASTADAS = {
@@ -124,10 +279,16 @@ const TRASTADAS = {
 const EFFECT_TEXT = {
   toalla: ['obj_toalla', 'Tienes la toalla puesta.'], perro: ['obj_perro', 'Tu perro vigila la parcela.'],
   descafeinado: ['obj_descafeinado', 'Tienes el descafeinado trampa preparado.'], coartada: ['obj_coartada', 'Tu próximo asalto será anónimo.'],
+  chancla: ['obj_toalla', 'Tienes la chancla en la mano: quien te asalte recibirá un chanclazo (-15 fichas).'],
+  candado: ['obj_perro', 'Candado puesto (48 h): el Joputa no puede saquearte ni vaciarte la nevera.'],
+  rastrillo: ['ico_aviso', 'Rastrillo en el césped: si te asaltan, fracasará y el ladrón perderá 1 acción mañana.'],
+  rastrillazo: ['ico_aviso', 'Pisaste un rastrillo: hoy tienes 1 acción menos.'],
+  chapa_cunado: ['ico_aviso', 'Chapa del Cuñado: hoy tienes 1 acción menos.'],
   luz: ['obj_cortar_luz', 'Te han cortado la luz: hoy cobras la mitad en el café.'], altavoz: ['obj_altavoz', 'Altavoz a tope: hoy ganas la mitad en minijuegos.'],
   mosquitos: ['obj_mosquitos', 'Mosquitos: no puedes jugar minijuegos hasta el café.'], sin_objetos: ['tr_tendedero', 'Te han escondido la ropa: hoy no puedes usar objetos.'],
   pillado: ['insignia_pillado', 'Te han pillado esta semana.'], chivato: ['insignia_chivato', 'Eres el chivato de la semana.'],
   enfermeria: ['tr_enfermeria', 'Estás en la enfermería: hasta el café de mañana no puedes acusar ni votar.'],
+  rabia: ['ico_accion', '¡Rabia de campista! Tienes +1 acción extra hoy.'],
 };
 
 // --------------------------------------------------------------- estado
@@ -152,6 +313,19 @@ function toast(msg, err = false) {
   $toast.className = 'show' + (err ? ' err' : '');
   clearTimeout(toast.t);
   toast.t = setTimeout(() => { $toast.className = ''; }, err ? 4200 : 3200);
+  if (err) {
+    SFX.buzzer();
+  } else if (/CLONK|rastrillo/i.test(msg)) {
+    SFX.clonk();
+  } else if (/sangría|pacto/i.test(msg)) {
+    SFX.pour();
+  } else if (/ZASCA|chanclazo/i.test(msg)) {
+    SFX.slap();
+  } else if (/fichas|botín|ganas|\+|monedas|recompensa|premio|porra/i.test(msg)) {
+    SFX.coin();
+  } else {
+    SFX.click();
+  }
 }
 
 function countdown() {
@@ -307,8 +481,20 @@ function banners() {
     out.push(bannerBtn('night', 'rol_joputa', 'Has pasado el táper.', 'Ya no eres el Joputa y ni tú sabes quién lo tiene. Disimula.'));
   }
   if (st.event) {
-    const img = { tormenta: 'ev_tormenta', inspeccion: 'ev_inspeccion', fiesta: 'ev_fiesta', mercadillo: 'ev_mercadillo', corte_agua: 'ev_corte_agua', karaoke: 'ev_fiesta' }[st.event.kind];
+    const img = { tormenta: 'ev_tormenta', inspeccion: 'ev_inspeccion', fiesta: 'ev_fiesta', mercadillo: 'ev_mercadillo', corte_agua: 'ev_corte_agua', karaoke: 'ev_fiesta', paella: 'ico_chiringuito' }[st.event.kind];
     out.push(`<div class="banner event"><img src="${IMG(img)}" alt=""><div><b>Hoy en el camping</b><div class="muted">${esc(st.event.text)}</div></div></div>`);
+  }
+  const pendingPact = (st.pactos || []).find((p) => p.status === 'pendiente' && !p.is_mine);
+  if (pendingPact) {
+    out.push(`<div class="banner" style="background:#fff2f5;border:2px solid #800020">
+      <span style="font-size:26px">🍷</span>
+      <div class="grow">
+        <b>${esc(pendingPact.other_name)} te ofrece el Pacto de la Sangría</b>
+        <div class="muted">No agresión mutua durante 48 h (20 fichas cada uno).</div>
+      </div>
+      <button class="btn sm green" data-act="pactoAccept" data-v="${pendingPact.id}">Aceptar</button>
+      <button class="btn sm ghost" data-act="pactoReject" data-v="${pendingPact.id}">Rechazar</button>
+    </div>`);
   }
   if (st.accusation) {
     const a = st.accusation;
@@ -335,27 +521,133 @@ function banners() {
   return out.join('');
 }
 
+function encargoCard() {
+  const enc = S.st?.encargo; if (!enc) return '';
+  return `<div class="card encargo-card ${enc.done ? 'done' : ''}" style="margin:8px 0">
+    <div class="row">
+      <span class="encargo-icon">${enc.done ? '✅' : '📋'}</span>
+      <div class="grow">
+        <b>Encargo del Camping</b>
+        <div class="muted">${esc(enc.text)}</div>
+      </div>
+      <span class="chip ${enc.done ? 'green' : 'orange'}">${enc.done ? 'Completado (+15 🪙)' : '+15 🪙'}</span>
+    </div>
+  </div>`;
+}
+
+function seBuscaCard() {
+  const reqs = S.st?.recompensas || [];
+  if (!reqs.length) return '';
+  return `<div class="section-title">🤠 Cartel de «Se Busca»</div>
+  <div class="card bounty-card">
+    <div class="muted" style="margin-bottom:6px">Asalta con éxito a estos campistas y cobra el bote acumulado:</div>
+    <div class="bounty-list">
+      ${reqs.map((r) => {
+        const p = player(r.target_id);
+        return `<div class="bounty-row">
+          <img src="${IMG(p?.avatar || 'avatar_abuelo')}" alt="" style="width:36px;height:36px;border-radius:50%">
+          <div class="grow"><b>${esc(r.target_name)}</b><div class="muted">${r.count} recompensa${r.count > 1 ? 's' : ''}</div></div>
+          <span class="chip orange"><b>🤠 ${r.total_bounty} 🪙</b></span>
+          <button class="btn sm orange" data-act="player" data-v="${r.target_id}">Ver</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function porraCard() {
+  const p = S.st?.porra; if (!p) return '';
+  const me = S.st.me;
+  const total = me.nevera + me.chiringuito;
+  const takenMap = {};
+  (p.taken_numbers || []).forEach((t) => { takenMap[t.number] = t; });
+  const hasMyNum = !!p.my_number;
+
+  const nums = [];
+  for (let i = 1; i <= 20; i++) {
+    const t = takenMap[i];
+    const isMine = p.my_number === i;
+    const isTaken = !!t && !isMine;
+    const dis = isMine || isTaken || hasMyNum || total < 10;
+    const cls = isMine ? 'mine' : isTaken ? 'taken' : '';
+    const label = isMine ? 'Tú' : isTaken ? esc(t.name) : '10 🪙';
+    nums.push(`<button class="porra-num ${cls}" data-act="buyPorra" data-v="${i}" ${dis ? 'disabled' : ''}>
+      <b>${i}</b>
+      <small>${label}</small>
+    </button>`);
+  }
+
+  return `<div class="section-title">🎟️ La Porra del Chiringuito</div>
+  <div class="card porra-card">
+    <div class="row">
+      <span style="font-size:32px">🎟️</span>
+      <div class="grow">
+        <b>Bote acumulado: <span class="porra-bote">${p.bote} fichas</span></b>
+        <div class="muted">Elige un número del 1 al 20 por 10 fichas. Al café de las 16:00 sale el premiado. Si nadie acierta, ¡se acumula!</div>
+      </div>
+    </div>
+    ${p.last_number ? `<p class="muted" style="margin:6px 0 2px">Ayer salió el <b>#${p.last_number}</b>${p.last_winner ? ` (¡ganó ${esc(p.last_winner)}!)` : ' (bote desierto)'}.</p>` : ''}
+    ${hasMyNum ? `<p class="muted" style="margin:8px 0 4px">Tu número para hoy es el <b>#${p.my_number}</b>. ¡Suerte en el café!</p>` : total < 10 ? '<p class="muted" style="margin:8px 0 4px">Necesitas al menos 10 fichas para jugar a la porra.</p>' : '<p class="muted" style="margin:8px 0 4px">Toca un número libre para comprarlo (10 fichas):</p>'}
+    <div class="porra-grid">
+      ${nums.join('')}
+    </div>
+  </div>`;
+}
+
 function viewCamping() {
   const st = S.st;
   const onMap = st.players.slice(0, SPOTS.length);
   const rest = st.players.slice(SPOTS.length);
   const tile = (p, i) => {
     const [x, y] = SPOTS[i];
+    const bounty = (st.recompensas || []).find((b) => b.target_id === p.id);
+    const hasPact = (st.pactos || []).some((pac) => pac.status === 'activo' && pac.other_id === p.id);
     return `<button class="parcel" style="left:${x}%;top:${y}%" data-act="player" data-v="${p.id}" aria-label="${esc(p.name)}">
       <img class="tile" src="${IMG(levelImg(p.points_total))}" alt="">
-      <span class="badges">${p.chivato ? `<img src="${IMG('insignia_chivato')}" alt="chivato">` : ''}${p.toalla ? `<img src="${IMG('obj_toalla')}" alt="toalla">` : ''}${p.pillado ? `<img src="${IMG('insignia_pillado')}" alt="pillado">` : ''}${p.inocente ? `<img src="${IMG('ico_voto_si')}" alt="inocente">` : ''}</span></button>`;
+      <span class="badges">${p.chivato ? `<img src="${IMG('insignia_chivato')}" alt="chivato">` : ''}${p.toalla ? `<img src="${IMG('obj_toalla')}" alt="toalla">` : ''}${p.pillado ? `<img src="${IMG('insignia_pillado')}" alt="pillado">` : ''}${p.inocente ? `<img src="${IMG('ico_voto_si')}" alt="inocente">` : ''}${bounty ? '<span class="badge-bounty">🤠</span>' : ''}${hasPact ? '<span class="badge-pacto">🍷</span>' : ''}</span></button>`;
   };
   const tag = (p, i) => {
     const [x, y] = SPOTS[i];
     const edge = x > 80 ? 'r' : x < 17 ? 'l' : '';
+    const bounty = (st.recompensas || []).find((b) => b.target_id === p.id);
     return `<button class="tag ${edge} ${p.is_me ? 'me' : ''} ${p.is_vip ? 'vip' : ''} ${p.active ? '' : 'zz'}" style="left:${x}%;top:${y}%" data-act="player" data-v="${p.id}">
-      <img src="${IMG(p.avatar)}" alt=""><span class="nm">${p.active ? '' : '💤 '}${esc(p.name)}</span></button>`;
+      <img src="${IMG(p.avatar)}" alt=""><span class="nm">${p.active ? '' : '💤 '}${esc(p.name)}${p.mote ? `<small class="tag-mote">${esc(p.mote)}</small>` : ''}${bounty ? `<small class="tag-bounty">🤠 ${bounty.total_bounty}</small>` : ''}</span></button>`;
   };
-  return `${banners()}${S.st.clock.week_day <= 2 ? summaryCard() : ''}${campStrip()}
+  return `${banners()}${encargoCard()}${S.st.clock.week_day <= 2 ? summaryCard() : ''}${campStrip()}
   <div class="map-wrap"><img class="map" src="img/mapa.webp" alt="Mapa del camping" width="768" height="1376">
     ${onMap.map(tile).join('')}${onMap.map(tag).join('')}</div>
   ${rest.length ? `<div class="overflow-list">${rest.map((p) => `<button class="btn ghost block" data-act="player" data-v="${p.id}"><img src="${IMG(p.avatar)}" alt="">${esc(p.name)}</button>`).join('')}</div>` : ''}
+  ${seBuscaCard()}
+  ${pintadasCard()}
   <p class="muted" style="text-align:center;margin-top:10px">Toca una parcela para asaltar, vigilar o acusar. La etiqueta naranja es la Parcela VIP: ganó el día de ayer y asaltarle sale gratis.</p>`;
+}
+
+function pintadasCard() {
+  const st = S.st; const me = st.me;
+  const list = st.pintadas || [];
+  return `<div class="section-title">🚪 Puerta de los baños</div>
+  <div class="card graffiti-board">
+    <div class="row">
+      <div class="graffiti-door">🚪</div>
+      <div class="grow">
+        <b>Puerta de los baños</b>
+        <div class="muted">Pintadas anónimas de los campistas (10 fichas)</div>
+      </div>
+      <button class="btn green" data-act="sheetPintada" ${me.pintada_today || (me.nevera + me.chiringuito) < 10 ? 'disabled' : ''}>
+        ${me.pintada_today ? 'Pintada hecha' : 'Escribir (10 🪙)'}
+      </button>
+    </div>
+    ${list.length ? `
+      <div class="graffiti-wall">
+        ${list.slice(0, 6).map((pt) => `
+          <div class="graffiti-item">
+            <span class="graffiti-text">«${esc(pt.text)}»</span>
+            <span class="graffiti-date">${fmtDay(pt.at)}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : '<p class="muted" style="margin:8px 0 0">La puerta está limpia por ahora... ¡Sé el primero en dejar una pintada!</p>'}
+  </div>`;
 }
 
 // Hucha del camping y misión de la semana (resumen)
@@ -388,12 +680,13 @@ function torneoCard() {
   const t = S.st.torneo; if (!t || !t.game) return '';
   const g = GAMES[t.game]; const me = S.st.me;
   const mine = t.ranking.findIndex((x) => x.id === me.id);
+  const isFree = mine < 0;
   return `<div class="section-title">🏆 Torneo del día</div>
   <div class="card torneo"><div class="row"><img src="${IMG(g.sprite)}" alt="" style="width:56px"><div class="grow">
-    <b>${g.name}</b><div class="muted">Cuenta tu mejor partida de hoy. Al café: 🥇 30 fichas y 3 puntos, 🥈 15 y 2, 🥉 5 y 1.</div></div>
-    <button class="btn green" data-act="game" data-v="${t.game}" ${me.actions_left < 1 ? 'disabled' : ''}>Jugar</button></div>
-    ${t.ranking.length ? `<ol class="rank small">${t.ranking.slice(0, 5).map((x, i) => `<li class="${x.id === me.id ? 'me' : ''}"><span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span>${esc(x.name)}</span><span class="pts">${x.score}</span></li>`).join('')}</ol>` : '<p class="muted" style="margin:8px 0 0">Nadie ha jugado todavía. ¡Estrénalo!</p>'}
-    ${mine > 4 ? `<p class="muted" style="margin:6px 0 0">Tú vas ${mine + 1}.º con ${t.ranking[mine].score}.</p>` : ''}</div>`;
+    <b>${g.name}</b><div class="muted">Cuenta tu mejor partida de hoy. <b>${isFree ? '1.er intento gratis' : 'Reintentar: 1 acción'}</b>. Al café: 🥇 30 fichas y 3 puntos, 🥈 15 y 2, 🥉 5 y 1.</div></div>
+    <button class="btn green" data-act="game" data-v="${t.game}" ${!isFree && me.actions_left < 1 ? 'disabled' : ''}>${isFree ? 'Jugar gratis' : 'Reintentar'}</button></div>
+    ${t.ranking.length ? `<ol class="rank small">${t.ranking.slice(0, 5).map((x, i) => `<li class="${x.id === me.id ? 'me' : ''}"><span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span>${esc(x.name)}</span><span class="pts">${x.score}</span></li>`).join('')}</ol>` : '<p class="muted" style="margin:8px 0 0">Nadie ha jugado todavía. ¡Estrénalo gratis!</p>'}
+    ${mine >= 0 ? `<p class="muted" style="margin:6px 0 0">Tú vas ${mine + 1}.º con ${t.ranking[mine].score}. (Reintentar cuesta 1 acción)</p>` : ''}</div>`;
 }
 
 function duelosCard() {
@@ -426,15 +719,32 @@ function sospechaCard() {
 
 function summaryCard() {
   const s = S.st.summary; if (!s || !s.lines?.length) return '';
-  return `<div class="card summary"><h2>📋 Resumen de la semana</h2><ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+  return `<div class="card summary">
+    <div class="row"><img src="${IMG('ico_trofeo')}" alt="" style="width:48px"><div class="grow">
+      <h2>📋 Resumen de la semana</h2>
+      <div class="muted">Descubre la verdad sobre el Joputa</div>
+    </div></div>
+    <ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+    <button class="btn orange block" style="margin-top:10px" data-act="destape">🎬 Ver el Destape Dramático</button>
+  </div>`;
 }
 
 function secretRoleCard() {
   const r = S.st.secret_role; if (!r) return '';
-  const extra = r.role === 'cotilla'
-    ? (r.used ? '<p class="muted">Ya has cotilleado esta semana.</p>' : `<button class="btn dark block" data-act="sheetCotilla" ${S.st.me.actions_left < 1 ? 'disabled' : ''}>Cotillear a alguien (1 acción)</button>`)
-    : r.role === 'socorrista' ? '<p class="muted">Haz guardia desde la parcela de cualquiera: te cuesta solo 1 acción.</p>'
-    : '<p class="muted">Se nota al contar los votos: el resultado dirá que alguien votó doble.</p>';
+  let extra = '';
+  if (r.role === 'cotilla') {
+    extra = r.used ? '<p class="muted">Ya has cotilleado esta semana.</p>' : `<button class="btn dark block" data-act="sheetCotilla" ${S.st.me.actions_left < 1 ? 'disabled' : ''}>Cotillear a alguien (1 acción)</button>`;
+  } else if (r.role === 'chapuzas') {
+    extra = r.used ? '<p class="muted">Ya has usado tu reparación semanal de Chapuzas.</p>' : '<p class="muted">Toca en la parcela de cualquier vecino para repararle la caravana (+25 fichas de regalo semanal).</p>';
+  } else if (r.role === 'cunado') {
+    extra = '<p class="muted">Defensa pasiva: si alguien te asalta, le meterás una chapa tremenda y tendrá 1 acción menos mañana.</p>';
+  } else if (r.role === 'dominguero') {
+    extra = '<p class="muted">Ayuda social: si al cierre del día estás entre los 3 últimos del ranking diario, recibes +15 fichas del camping.</p>';
+  } else if (r.role === 'socorrista') {
+    extra = '<p class="muted">Haz guardia desde la parcela de cualquiera: te cuesta solo 1 acción.</p>';
+  } else {
+    extra = '<p class="muted">Se nota al contar los votos: el resultado dirá que alguien votó doble.</p>';
+  }
   return `<div class="card secret"><div class="row"><img src="${IMG(ROLE_IMG[r.role])}" alt="" style="width:64px"><div class="grow">
     <h2>Rol secreto: ${ROLE_NAME[r.role]}</h2><p class="muted" style="margin:0">${esc(r.text)}</p></div></div>${extra}</div>`;
 }
@@ -570,15 +880,20 @@ function viewJugar() {
   const noItems = me.effects.some((e) => e.kind === 'sin_objetos');
   const total = me.nevera + me.chiringuito;
   return `${roleCards()}
+  ${encargoCard()}
   ${torneoCard()}
+  ${porraCard()}
   ${duelosCard()}
   ${misionCard()}
   ${retosCard()}
   <div class="section-title">Currar · 1 acción</div>
   ${mosq ? '<p class="muted">Los mosquitos no te dejan jugar hasta el café.</p>' : agua ? '<p class="muted">Corte de agua: hoy nadie puede jugar minijuegos.</p>' : ''}
-  <div class="games">${Object.entries(GAMES).map(([k, g]) => `
-    <button class="game" data-act="game" data-v="${k}" style="background-image:url(${IMG(g.bg)})" ${noActions || mosq || agua ? 'disabled' : ''}>
-      <img src="${IMG(g.sprite)}" alt=""><span>${g.name}</span></button>`).join('')}</div>
+  <div class="games">${Object.entries(GAMES).map(([k, g]) => {
+    const isTorneoFree = st.torneo && st.torneo.game === k && !st.torneo.ranking.some((x) => x.id === me.id);
+    const dis = (!isTorneoFree && noActions) || mosq || agua;
+    return `<button class="game" data-act="game" data-v="${k}" style="background-image:url(${IMG(g.bg)})" ${dis ? 'disabled' : ''}>
+      <img src="${IMG(g.sprite)}" alt=""><span>${g.name}${isTorneoFree ? ' <b style="color:var(--pine-deep);display:block;font-size:11px">¡Gratis!</b>' : ''}</span></button>`;
+  }).join('')}</div>
 
   <div class="section-title">Investigar</div>
   <div class="card row"><img src="${IMG('ico_pista')}" alt="" style="width:56px"><div class="grow">
@@ -587,17 +902,25 @@ function viewJugar() {
 
   <div class="section-title">Tus objetos (${me.items.length}/3)</div>
   <div class="card">${me.items.length ? me.items.map((it) => `
-    <div class="item-row"><img src="${IMG('obj_' + it.kind)}" alt=""><div class="grow"><b>${esc(it.name)}</b>${it.kind === 'megafono' ? `<div class="muted">${it.uses} usos · para replicar al loro</div>` : it.kind === 'punal' ? '<div class="muted">Tu voto a favor cuenta doble: en una acusación o en la hoguera</div>' : ''}</div>
+    <div class="item-row"><img src="${IMG(it.kind === 'chancla' ? 'obj_toalla' : it.kind === 'candado' ? 'obj_perro' : it.kind === 'rastrillo' ? 'ico_aviso' : 'obj_' + it.kind)}" alt=""><div class="grow"><b>${esc(it.name)}</b>${it.kind === 'chancla' ? '<div class="muted">Si te asaltan, contraatacas y quitas 15 fichas al ladrón</div>' : it.kind === 'candado' ? '<div class="muted">Inmune a saqueos y vaciados del Joputa durante 48 h</div>' : it.kind === 'rastrillo' ? '<div class="muted">Colócalo en tu parcela: bloquea el asalto, le quita 10 fichas al ladrón y le deja con 1 acción menos mañana</div>' : it.kind === 'megafono' ? `<div class="muted">${it.uses} usos · para replicar al loro</div>` : it.kind === 'punal' ? '<div class="muted">Tu voto a favor cuenta doble: en una acusación o en la hoguera</div>' : ''}</div>
       <button class="btn green" data-act="useItem" data-v="${it.id}" ${noActions || noItems ? 'disabled' : ''}>Usar</button></div>`).join('')
     : '<p class="muted" style="margin:0">No tienes objetos. Cómpralos, gánalos con retos o con una puntuación perfecta.</p>'}
     ${noItems ? '<p class="muted">Hoy no puedes usar objetos: te han escondido la ropa.</p>' : ''}</div>
 
   <div class="section-title">Tienda · 1 compra al día</div>
-  <div class="shop">${SHOP.filter(([k]) => k !== 'pista_falsificada' || feat('pistas_falsas')).map(([k, price, desc]) => `
-    <button data-act="buy" data-v="${k}" ${me.bought_today || me.items.length >= 3 || total < price ? 'disabled' : ''}>
-      <img src="${IMG('obj_' + k)}" alt=""><b>${ITEM_NAMES[k]}</b>
-      <span class="price"><img src="${IMG('ico_ficha')}" alt="">${price}</span><span class="muted" style="font-size:12px">${desc}</span></button>`).join('')}</div>
-  ${me.bought_today ? '<p class="muted" style="text-align:center">Ya has comprado hoy. Vuelve mañana.</p>' : ''}`;
+  <div class="shop">${SHOP.filter(([k]) => k !== 'pista_falsificada' || feat('pistas_falsas')).map(([k, price, desc]) => {
+    const isSiesta = k === 'siesta';
+    const isRonda = k === 'ronda';
+    const dis = isSiesta
+      ? (me.siesta_today || total < price)
+      : (me.bought_today || (!isRonda && me.items.length >= 3) || total < price);
+    const ico = isSiesta ? 'tr_colchon' : isRonda ? 'ico_chiringuito' : k === 'chancla' ? 'obj_toalla' : k === 'candado' ? 'obj_perro' : k === 'rastrillo' ? 'ico_aviso' : 'obj_' + k;
+    return `<button data-act="buy" data-v="${k}" ${dis ? 'disabled' : ''}>
+      <img src="${IMG(ico)}" alt=""><b>${ITEM_NAMES[k]}</b>
+      <span class="price"><img src="${IMG('ico_ficha')}" alt="">${price}</span>
+      <span class="muted" style="font-size:12px">${desc}${isSiesta && me.siesta_today ? ' <b>(Hecha)</b>' : ''}</span></button>`;
+  }).join('')}</div>
+  ${me.bought_today ? '<p class="muted" style="text-align:center">Ya has comprado tu objeto de hoy. Vuelve mañana.</p>' : ''}`;
 }
 
 function viewPistas() {
@@ -709,7 +1032,7 @@ function viewRanking() {
   return `<div class="seg">${['hoy', 'semana', 'mes'].map((m) => `<button data-act="rank" data-v="${m}" aria-pressed="${mode === m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>
   <div class="card"><p class="muted" style="margin-top:0">${mode === 'hoy' ? 'Fichas ganadas hoy. El primero al café gana 10 puntos y la Parcela VIP.' : mode === 'semana' ? 'Puntos de esta semana: 10, 7, 5, 3 y 1 por día, más acusaciones acertadas.' : 'Quien acabe el mes primero es el Campista del mes.'}</p>
     <ol class="rank">${list.map((p, i) => `<li class="${p.is_me ? 'me' : ''}"><span class="pos">${i + 1}</span><img src="${IMG(p.avatar)}" alt="">
-      <span>${esc(p.name)}${p.is_vip ? ' <span class="chip">VIP</span>' : ''}</span><span class="pts">${p[key]} <small>${unit}</small></span></li>`).join('')}</ol></div>
+      <span>${esc(p.name)}${p.is_vip ? ' <span class="chip">VIP</span>' : ''}${p.mote ? ` <span class="chip chip-mote">${esc(p.mote)}</span>` : ''}</span><span class="pts">${p[key]} <small>${unit}</small></span></li>`).join('')}</ol></div>
   ${st.summary ? `<div class="section-title">Semana pasada</div>${summaryCard()}` : ''}
   ${st.yesterday.length ? `<div class="section-title">Ayer</div><div class="card"><ol class="rank">${st.yesterday.slice(0, 3).map((r) => `
     <li><span class="pos">${r.position}</span><img src="${IMG(player(r.player_id)?.avatar || 'avatar_abuelo')}" alt=""><span>${esc(r.name)}</span><span class="pts">${r.net} <small>fichas</small></span></li>`).join('')}</ol></div>` : ''}
@@ -736,11 +1059,21 @@ const pickPlayers = (act, { exclude = [], selected = null, extra = '' } = {}) =>
 const SHEETS = {
   player(id) {
     const st = S.st; const p = player(id); const me = st.me; if (!p) return '';
-    const chips = [p.is_vip && '<span class="chip">Parcela VIP</span>', p.toalla && '<span class="chip blue">Toalla puesta</span>',
-      p.inocente && '<span class="chip green">Inocente esta semana</span>', p.pillado && '<span class="chip red">Pillado</span>',
+    const bountyObj = (st.recompensas || []).find((b) => b.target_id === p.id);
+    const pact = (st.pactos || []).find((pac) => pac.other_id === p.id);
+    const chips = [
+      p.mote && `<span class="chip chip-mote">${esc(p.mote)}</span>`,
+      p.is_vip && '<span class="chip">Parcela VIP</span>',
+      p.toalla && '<span class="chip blue">Toalla puesta</span>',
+      p.inocente && '<span class="chip green">Inocente esta semana</span>',
+      p.pillado && '<span class="chip red">Pillado</span>',
       p.chivato && '<span class="chip red">Chivato</span>',
       p.revenge && '<span class="chip red">Te asaltó: venganza = botín doble</span>',
-      !p.active && `<span class="chip">💤 Sin entrar desde ${fmtDay(p.last_active)}</span>`].filter(Boolean).join(' ');
+      bountyObj && `<span class="chip orange">🤠 Se busca: ${bountyObj.total_bounty} 🪙</span>`,
+      pact?.status === 'activo' && '<span class="chip" style="background:#800020;color:#fff">🍷 Pacto Sangría</span>',
+      pact?.status === 'pendiente' && '<span class="chip" style="background:#fff2f5;color:#800020;border:1px solid #800020">🍷 Sangría pendiente</span>',
+      !p.active && `<span class="chip">💤 Sin entrar desde ${fmtDay(p.last_active)}</span>`
+    ].filter(Boolean).join(' ');
     const head = `<div class="sheet-head"><img src="${IMG(p.avatar)}" alt=""><div><h2>${esc(p.name)}</h2>
       <div>${chips}</div><div class="muted">Hoy: ${p.net_today} fichas · Semana: ${p.points_week} pts</div></div></div>`;
     if (p.is_me) {
@@ -755,10 +1088,37 @@ const SHEETS = {
     const guarding = me.guard_tonight === p.id;
     const canDuel = st.duels?.can_challenge && me.actions_left >= 1;
     const gCost = st.secret_role?.role === 'socorrista' ? 1 : 2;
+    const total = me.nevera + me.chiringuito;
+    const hasPact = pact?.status === 'activo';
+    const isChapuzas = st.secret_role?.role === 'chapuzas';
+
     return `${head}<div class="btns">
-      <button class="btn orange" data-act="asalto" data-v="${p.id}" ${noAct || asaltado ? 'disabled' : ''}>
-        <img src="${IMG('ico_chiringuito')}" alt="">${asaltado ? 'Ya le has asaltado hoy' : p.revenge ? '¡Venganza! Asaltar (botín doble)' : 'Asaltarle'}
-        <span class="cost">⚡1 · ${p.is_vip ? 'gratis' : '5 fichas'}</span></button>
+      ${hasPact
+        ? `<button class="btn red" data-act="confirmTraicion" data-v="${p.id}" ${noAct ? 'disabled' : ''}>
+             <img src="${IMG('ico_chiringuito')}" alt="">🗡️ Traicionar Pacto de la Sangría
+             <span class="cost">⚡1 · Botín ×3 · Mote «Judas»</span></button>`
+        : `<button class="btn orange" data-act="asalto" data-v="${p.id}" ${noAct || asaltado ? 'disabled' : ''}>
+             <img src="${IMG('ico_chiringuito')}" alt="">${asaltado ? 'Ya le has asaltado hoy' : p.revenge ? '¡Venganza! Asaltar (botín doble)' : 'Asaltarle'}
+             <span class="cost">⚡1 · ${p.is_vip ? 'gratis' : '5 fichas'}</span></button>`
+      }
+      ${!pact ? `<button class="btn dark" data-act="pactoPropose" data-v="${p.id}" ${total < 20 ? 'disabled' : ''}>
+          <span style="font-size:16px">🍷</span> Proponer Pacto de la Sangría
+          <span class="cost">20 fichas · 48 h</span></button>`
+        : pact.status === 'pendiente' && !pact.is_mine ? `<div class="btns two" style="margin:4px 0">
+            <button class="btn green" data-act="pactoAccept" data-v="${pact.id}" ${total < 20 ? 'disabled' : ''}>Aceptar Sangría (20 🪙)</button>
+            <button class="btn ghost" data-act="pactoReject" data-v="${pact.id}">Rechazar</button>
+          </div>`
+        : pact.status === 'pendiente' && pact.is_mine ? `<p class="muted" style="margin:4px 0">🍷 Propuesta de sangría enviada (esperando respuesta).</p>`
+        : ''
+      }
+      <button class="btn orange" data-act="sheetBounty" data-v="${p.id}" ${total < 10 ? 'disabled' : ''}>
+        <span style="font-size:16px">🤠</span> Poner precio a su cabeza (Se Busca)
+        <span class="cost">Mín. 10 fichas</span></button>
+      ${isChapuzas ? `<button class="btn green" data-act="chapuzasReparar" data-v="${p.id}" ${st.secret_role.used ? 'disabled' : ''}>
+          <span style="font-size:16px">🔧</span> Reparar parcela (+25 fichas)
+          <span class="cost">${st.secret_role.used ? 'Ya usado esta semana' : '1 vez por semana'}</span></button>`
+        : ''
+      }
       <button class="btn blue" data-act="guardia" data-v="${p.id}" ${me.actions_left < gCost || me.guard_tonight || !st.clock.night_open ? 'disabled' : ''}>
         <img src="${IMG('obj_linterna')}" alt="">${guarding ? 'Esta noche vigilas aquí' : 'Hacer guardia esta noche'}<span class="cost">⚡${gCost}</span></button>
       ${items.map((it) => `<button class="btn green" data-act="useOn" data-v="${it.id}" data-t="${p.id}" ${noAct || noItems ? 'disabled' : ''}>
@@ -770,6 +1130,33 @@ const SHEETS = {
     </div>
     <p class="muted">${me.guard_tonight && !guarding ? 'Esta noche ya haces guardia en otra parcela. ' : ''}${!st.clock.night_open ? 'Las guardias se preparan entre las 02:00 y las 23:00. ' : ''}
       La guardia frustra la trastada del Joputa si viene a esta parcela, y te da una pista.</p>`;
+  },
+  bounty(targetId) {
+    const p = player(targetId); if (!p) return '';
+    const me = S.st.me; const total = me.nevera + me.chiringuito;
+    return `<div class="sheet-head"><img src="${IMG(p.avatar)}" alt=""><div><h2>🤠 Cartel de «Se Busca»</h2>
+      <div class="muted">Pon precio a la cabeza de ${esc(p.name)}</div></div></div>
+      <p>Aporta fichas al bote de recompensa sobre <b>${esc(p.name)}</b>. El primer campista que consiga asaltarle con éxito se llevará todo el bote acumulado.</p>
+      <div class="btns">
+        ${[10, 20, 30, 50].map((amt) => `<button class="btn orange" data-act="putBounty" data-v="${p.id}" data-amt="${amt}" ${total < amt ? 'disabled' : ''}>
+          Poner ${amt} fichas de recompensa</button>`).join('')}
+      </div>
+      <button class="btn ghost block" style="margin-top:10px" data-act="closeSheet">Cancelar</button>`;
+  },
+  confirmTraicion(targetId) {
+    const p = player(targetId); if (!p) return '';
+    return `<div class="sheet-head"><img src="${IMG(p.avatar)}" alt=""><div><h2 style="color:var(--danger)">🗡️ Traición a la Sangría</h2>
+      <div class="muted">¿Romper el pacto con ${esc(p.name)}?</div></div></div>
+      <p>Tenéis un <b>Pacto de la Sangría</b> firmado. Si decides romperlo por sorpresa y asaltarle ahora:</p>
+      <ul style="margin:8px 0 14px 20px;line-height:1.4">
+        <li><b>Botín ×3:</b> le robarás el triple de fichas que en un asalto normal.</li>
+        <li><b>Mote deshonroso:</b> recibirás el mote público de <b>«Judas del Camping»</b>.</li>
+        <li>El pacto quedará roto de inmediato.</li>
+      </ul>
+      <div class="btns">
+        <button class="btn red block" data-act="asaltoBetray" data-v="${p.id}">¡Traicionar y asaltar ahora! (⚡1)</button>
+        <button class="btn ghost block" data-act="closeSheet">Mantener la lealtad</button>
+      </div>`;
   },
   target(itemId) {
     const it = S.st.me.items.find((i) => i.id === itemId); if (!it) return '';
@@ -911,6 +1298,35 @@ const SHEETS = {
       <p class="muted">No hay vuelta atrás.</p>
       <div class="btns two"><button class="btn ghost" data-act="closeSheet">Mejor no</button><button class="btn red" data-act="doChivarse">Chivarme</button></div>`;
   },
+  pintada(tplIdx = 0, targetId = null) {
+    const st = S.st; const me = st.me;
+    tplIdx = Number(tplIdx) || 0;
+    const tpl = PINTADAS_TEMPLATES[tplIdx] || PINTADAS_TEMPLATES[0];
+    const needsTarget = tplIdx < 10;
+    const tg = targetId ? player(targetId) : null;
+    const preview = needsTarget
+      ? (tg ? tpl.replace('{target}', tg.name) : tpl.replace('{target}', '_________'))
+      : tpl;
+    const canSend = (!needsTarget || targetId) && (me.nevera + me.chiringuito) >= 10 && !me.pintada_today;
+
+    return `<h2>🚪 Pintadas en los baños</h2>
+      <p class="muted">Deja una pintada anónima en los baños del camping. Cuesta 10 fichas (1 al día). Nadie sabrá quién la escribió.</p>
+      <div class="graffiti-preview">
+        <span class="graffiti-quote">«${esc(preview)}»</span>
+      </div>
+      <label class="field" style="margin-top:12px">Elige qué quieres poner:
+        <select data-act="pintadaTpl" data-t="${targetId || ''}">
+          ${PINTADAS_TEMPLATES.map((t, i) => `<option value="${i}" ${i === tplIdx ? 'selected' : ''}>${esc(t.replace('{target}', '...'))}</option>`).join('')}
+        </select>
+      </label>
+      ${needsTarget ? `
+        <h3 style="margin:12px 0 6px">¿A quién va dirigida?</h3>
+        ${pickPlayers('pintadaPickTarget', { exclude: [me.id], selected: targetId, extra: `data-tpl="${tplIdx}"` })}
+      ` : ''}
+      <button class="btn green block" style="margin-top:14px" data-act="doPintada" data-tpl="${tplIdx}" data-t="${targetId || ''}" ${canSend ? '' : 'disabled'}>
+        ${me.pintada_today ? 'Ya has dejado tu pintada hoy' : 'Escribir pintada (10 🪙)'}
+      </button>`;
+  },
   menu() {
     const st = S.st; const g = st.group;
     const link = `${location.origin}${location.pathname}?c=${g.invite_code}`;
@@ -941,14 +1357,17 @@ const SHEETS = {
       <p>Cada día ganáis fichas y os las robáis. A la hora del café se cierra el día y quien más ha ganado se lleva los puntos. Cada semana uno de vosotros es, en secreto, <b>el Joputa</b>: hace trastadas por la noche y, si nadie le pilla, el sábado al café cobra el táper. El resto tiene que descubrirle.</p>`, true)}
     ${sec('☀️ Un día en el camping', `
       <ul>
-        <li>Tienes <b>5 acciones</b> al día. Quien queda último al café tiene una acción extra al día siguiente.</li>
+        <li>Tienes <b>5 acciones</b> al día.</li>
+        <li><b>Torneo del día gratis:</b> tu primera partida del día al minijuego del torneo es <b>gratis</b> (no gasta acciones). Si quieres reintentar para mejorar marca, sí cuesta 1 acción.</li>
+        <li><b>Siesta de 20 minutos:</b> en la tienda por 50 fichas ganas <b>+1 acción extra</b> para hoy (máximo 1 al día).</li>
+        <li><b>Rabia de campista:</b> si te asaltaron 2 o más veces ayer, si fuiste el más asaltado o si quedaste último en la clasificación diaria, amaneces con <b>+1 acción extra</b>.</li>
         <li>Quien lleva <b>3 días sin abrir el juego</b> sale con 💤: no cuenta en las votaciones, no puede tocarle ser Joputa ni un rol, y no cobra de la hucha. Basta con abrir la app para volver.</li>
         <li><b>Minijuegos</b> (1 acción, 14 distintos: de puntería, reflejos, memoria, lógica y cotilleo): entre 5 y 25 fichas según lo bien que lo hagas. Con una puntuación casi perfecta, a veces ganas un objeto.</li>
         <li><b>Asaltar</b> (1 acción y 5 fichas, gratis a la Parcela VIP): le robas el 15 % de sus fichas (máx. 30). Solo te protegen los objetos. Solo una vez al día a la misma persona.</li>
         <li><b>Venganza:</b> si alguien te asaltó hoy o ayer (sin coartada), asaltarle roba el doble (30 %, máx. 60).</li>
         <li><b>Investigar</b> (1 acción, una vez al día): 40 % de encontrar una pista del Joputa.</li>
         <li><b>Hacer guardia</b> (2 acciones, entre las 02:00 y las 23:00): esa noche ninguna trastada entra en la parcela que vigilas. Si frustras la del Joputa, ganas una pista.</li>
-        <li><b>Tienda</b>: una compra al día, máximo 3 objetos en el inventario.</li>
+        <li><b>Tienda</b>: una compra al día (la siesta tiene su propio límite de 1 al día), máximo 3 objetos en el inventario.</li>
       </ul>`)}
     ${sec('🏆 Fichas y puntos: quién gana', `
       <ul>
@@ -1036,8 +1455,34 @@ const SHEETS = {
             <li><b>Cotilla:</b> una vez, ve todo lo que hizo alguien ayer, incluido si robó en la misión.</li>
             <li><b>Socorrista:</b> sus guardias cuestan 1 acción y, si frustra al Joputa, gana también una pista de comportamiento.</li>
             <li><b>Alcalde:</b> su voto cuenta doble.</li>
+            <li><b>El Cuñado:</b> si le asaltan, le mete una chapa de una hora al asaltante, que tendrá 1 acción menos mañana.</li>
+            <li><b>El Chapuzas:</b> una vez por semana repara la parcela de un vecino y le regala 25 fichas.</li>
+            <li><b>El Dominguero:</b> si al café está entre los 3 últimos del ranking diario, el camping le da una ayuda social de +15 fichas.</li>
           </ul></li>
       </ul>`, false, feat('roles'))}
+    ${sec('🍷 El Pacto de la Sangría', `
+      <ul>
+        <li>Dos campistas pueden sellar un pacto bilateral de no agresión durante 48 h pagando 20 fichas cada uno.</li>
+        <li>Durante el pacto no pueden asaltarse normalmente.</li>
+        <li><b>Traición:</b> cualquier firmante puede romper el pacto asaltando a traición. Quien traiciona roba un <b>botín ×3</b>, pero recibe la deshonra pública del mote <b>«Judas del Camping»</b> para que todo el camping sepa de qué pie cojea.</li>
+      </ul>`)}
+    ${sec('🤠 Cartel de «Se Busca»', `
+      <ul>
+        <li>¿Te cae mal alguien o va demasiado sobrado? Pon precio a su cabeza en el tablón de Se Busca (desde 10 fichas).</li>
+        <li>Varios campistas pueden sumar fichas al bote sobre la misma persona.</li>
+        <li>El primer campista que consiga asaltarle con éxito se lleva el bote íntegro acumulado.</li>
+      </ul>`)}
+    ${sec('📋 Encargos del Camping', `
+      <ul>
+        <li>Cada mañana recibes una pequeña tarea del camping asignada al azar (hacer un asalto, jugar a un minijuego concreto, usar un objeto, etc.).</li>
+        <li>Al completarla ganas de inmediato <b>+15 fichas</b>.</li>
+      </ul>`)}
+    ${sec('🎟️ La Porra del Chiringuito', `
+      <ul>
+        <li>Cada día puedes comprar un número del 1 al 20 por 10 fichas. No puede haber dos campistas con el mismo número el mismo día.</li>
+        <li>Al café de las 16:00 se extrae el número ganador. Quien lo tenga se lleva todo el bote acumulado.</li>
+        <li>Si nadie tenía el número premiado, el bote <b>se acumula</b> para el día siguiente.</li>
+      </ul>`)}
     ${sec('🦜 El loro', `
       <ul>
         <li>Tu primer fallo gordo del día en un minijuego, y el loro se burla de ti delante de todos.</li>
@@ -1055,6 +1500,7 @@ const SHEETS = {
             <li><b>Mercadillo:</b> más fácil ganar objetos en los minijuegos.</li>
             <li><b>Corte de agua:</b> no hay minijuegos.</li>
             <li><b>Karaoke:</b> todos reciben un megáfono.</li>
+            <li><b>Día de Paella Popular:</b> el café reparte 50 fichas en vez de 40.</li>
           </ul></li>`, false, feat('retos') || feat('eventos'))}
       </ul>`)}
     ${sec('🎒 Objetos', `
@@ -1063,6 +1509,100 @@ const SHEETS = {
     <button class="btn block" data-act="closeSheet">Entendido</button>`;
   },
 };
+
+// Destape Dramático: pantalla cinematográfica del sábado
+function showDramaticReveal() {
+  const st = S.st;
+  const summary = st.summary;
+  const caught = st.week?.caught;
+  const caughtName = st.week?.caught_name || 'El Joputa';
+  const joputaPlayer = st.players.find((p) => p.pillado) || (caught ? st.players.find((p) => p.name === caughtName) : null) || st.players[0];
+
+  let step = 1;
+  const ov = document.createElement('div');
+  ov.className = 'destape-overlay';
+  document.body.appendChild(ov);
+  document.body.classList.add('mg-open');
+
+  const renderStep = () => {
+    if (step === 1) {
+      SFX.drumroll();
+      ov.innerHTML = `
+        <div class="destape-modal step-1">
+          <div class="destape-badge">☕ EL CAFÉ DEL SÁBADO</div>
+          <h2>¿Quién ha sido el Joputa esta semana?</h2>
+          <div class="destape-silhouette">
+            <img src="${IMG('ev_sombra_nocturna')}" alt="Misterio">
+            <div class="question-mark">?</div>
+          </div>
+          <p class="muted">Toda la semana haciendo trastadas en la sombra...</p>
+          <button class="btn orange block" data-step="2">Ver sospechosos ➔</button>
+        </div>
+      `;
+    } else if (step === 2) {
+      ov.innerHTML = `
+        <div class="destape-modal step-2">
+          <div class="destape-badge">☕ SOSPECHOSOS HABITUALES</div>
+          <h2>El camping desconfiaba de...</h2>
+          <div class="destape-suspects">
+            ${st.players.slice(0, 3).map((p) => `
+              <div class="destape-suspect-card">
+                <img src="${IMG(p.avatar)}" alt="">
+                <span>${esc(p.name)}</span>
+              </div>
+            `).join('')}
+          </div>
+          <p class="muted">¿Habrán acertado o se habrá salido con la suya?</p>
+          <button class="btn red block pulse" data-step="3">💥 ¡DESTAPAR AL CULPABLE! 💥</button>
+        </div>
+      `;
+    } else if (step === 3) {
+      const isCaught = caught || summary?.lines?.some((l) => /pillad|chiv/i.test(l));
+      if (isCaught) {
+        SFX.buzzer();
+      } else {
+        SFX.fanfare();
+      }
+      vib([100, 50, 100, 50, 200]);
+      ov.innerHTML = `
+        <div class="destape-modal step-3">
+          <div class="destape-badge">☕ LA GRAN REVELACIÓN</div>
+          <div class="destape-culprit">
+            <img class="destape-avatar" src="${IMG(joputaPlayer?.avatar || 'rol_joputa')}" alt="">
+            <h2>${esc(joputaPlayer?.name || caughtName)}</h2>
+            ${joputaPlayer?.mote ? `<span class="chip-mote">${esc(joputaPlayer.mote)}</span>` : ''}
+            <div class="stamp-wrap">
+              <div class="stamp ${isCaught ? 'stamp-caught' : 'stamp-escaped'}">
+                ${isCaught ? '¡PILLADO!' : '¡ESCAPÓ!'}
+              </div>
+            </div>
+          </div>
+          ${summary?.lines?.length ? `
+            <div class="destape-lines">
+              ${summary.lines.slice(0, 3).map((l) => `<p>${esc(l)}</p>`).join('')}
+            </div>
+          ` : ''}
+          <button class="btn green block" data-close="1">Volver al camping</button>
+        </div>
+      `;
+    }
+  };
+
+  ov.addEventListener('click', (e) => {
+    const s = e.target.closest('[data-step]');
+    if (s) {
+      step = Number(s.dataset.step);
+      renderStep();
+      return;
+    }
+    if (e.target.closest('[data-close]')) {
+      ov.remove();
+      document.body.classList.remove('mg-open');
+    }
+  });
+
+  renderStep();
+}
 
 // ------------------------------------------------------------ minijuegos
 // Lienzo para los minijuegos de dibujo, con la proporción alto/ancho pedida
@@ -1092,23 +1632,53 @@ function openGame(kind, opts = {}) {
     <div class="result" aria-live="polite"></div>
     <div class="ctrl"></div>
     <div class="btns two"><button class="btn ghost" data-mg="close">Salir</button><button class="btn green" data-mg="go">${duel ? '¡Al duelo! (⚡1)' : practice ? 'Empezar (prueba)' : 'Empezar (⚡1)'}</button></div>`;
-  document.body.appendChild(ov);
+  document.body.appendChild(ov); document.body.classList.add('mg-open');
+  ov.addEventListener('contextmenu', (e) => e.preventDefault());
   const stage = ov.querySelector('.stage'); const ctrl = ov.querySelector('.ctrl');
   const result = ov.querySelector('.result'); const goBtn = ov.querySelector('[data-mg="go"]');
   let state = 'ready'; let cleanup = () => {}; let doneAt = 0;
-  const close = () => { cleanup(); ov.remove(); };
+  const close = () => { cleanup(); ov.remove(); document.body.classList.remove('mg-open'); };
 
   async function finish(score, label) {
     state = 'sending'; cleanup(); goBtn.disabled = true; doneAt = performance.now();
     if (duel) {
       score = Math.round(Math.max(0, Math.min(1, score)) * 100) / 100;
-      result.textContent = `${label ? `${label} ` : ''}Tu puntuación: ${Math.round(score * 100)}.`;
+      const myScoreInt = Math.round(score * 100);
+      result.textContent = `${label ? `${label} ` : ''}Tu puntuación: ${myScoreInt}.`;
       const r = await opts.submit(score);
-      if (r) result.textContent += ` ${r.msg}`;
+      if (r) {
+        if (r.rival !== undefined) {
+          const rivalScore = r.rival;
+          const isWin = r.win === true;
+          const isTie = r.win === null;
+          if (isWin) SFX.fanfare(); else if (isTie) SFX.coin(); else SFX.buzzer();
+          result.innerHTML = `
+            <div class="h2h-card">
+              <div class="h2h-title">${isTie ? '¡EMPATE TÉCNICO!' : isWin ? '¡HAS GANADO EL DUELO!' : 'HAS PERDIDO EL DUELO'}</div>
+              <div class="h2h-scores">
+                <div class="h2h-col ${isWin ? 'h2h-winner' : isTie ? '' : 'h2h-loser'}">
+                  <span class="h2h-label">Tú</span>
+                  <span class="h2h-num">${myScoreInt}</span>
+                </div>
+                <div class="h2h-vs">VS</div>
+                <div class="h2h-col ${!isWin && !isTie ? 'h2h-winner' : isTie ? '' : 'h2h-loser'}">
+                  <span class="h2h-label">Rival</span>
+                  <span class="h2h-num">${rivalScore}</span>
+                </div>
+              </div>
+              <p class="h2h-msg">${esc(r.msg)}</p>
+            </div>
+          `;
+        } else {
+          result.textContent += ` ${r.msg}`;
+          SFX.coin();
+        }
+      }
       goBtn.textContent = 'Cerrar'; goBtn.disabled = false; state = 'done';
       return;
     }
     score = Math.max(0, Math.min(1, score));
+    if (score >= 0.6) SFX.fanfare(); else if (score < 0.25) SFX.buzzer(); else SFX.coin();
     if (practice) {
       result.textContent = `${label ? `${label} ` : ''}Puntuación: ${Math.round(score * 100)} (prueba).`;
       goBtn.textContent = 'Cerrar'; goBtn.disabled = false; state = 'done';
@@ -1124,81 +1694,337 @@ function openGame(kind, opts = {}) {
   }
 
   const games = {
-    // Petanca de verdad, vista desde arriba: el boliche y dos bolas rivales ya están en la pista;
-    // tiras 3 bolas arrastrando hacia atrás (dirección y fuerza). Las bolas ruedan, frenan y chocan.
+    // Petanca realista: lanzamiento en parábola 3D (vuela por el aire, bota en la arena y rueda).
+    // Arrastra hacia atrás para apuntar la parábola (altura, distancia de caída y rodada).
     petanca() {
       const { c, W, H, cv } = mkCanvas(stage, 1.5, 'transparent', false);
       const I = { pista: loadImg('pt_pista'), plata: loadImg('pt_bola_plata'), oro: loadImg('pt_bola_oro'), bol: loadImg('pt_boliche'), circ: loadImg('pt_circulo') };
       const R = W * 0.05; const r = W * 0.026;
-      const box = { x0: W * 0.1, x1: W * 0.9, y0: H * 0.055, y1: H * 0.945 };
-      const clampIn = (b) => { b.x = Math.max(box.x0 + b.R, Math.min(box.x1 - b.R, b.x)); b.y = Math.max(box.y0 + b.R, Math.min(box.y1 - b.R, b.y)); };
-      const jack = { x: W * (0.3 + rnd() * 0.4), y: H * (0.18 + rnd() * 0.16), vx: 0, vy: 0, R: r, m: 0.35, kind: 'bol' };
+      const courtBounds = (y, radius = 0) => {
+        const y0 = H * 0.098; const y1 = H * 0.892;
+        const u = Math.max(0, Math.min(1, (y - y0) / (y1 - y0)));
+        const x0 = W * (0.205 - 0.075 * u);
+        const x1 = W * (0.795 + 0.075 * u);
+        return { xMin: x0 + radius, xMax: x1 - radius, yMin: y0 + radius, yMax: y1 - radius };
+      };
+      const clampIn = (b) => {
+        const cb = courtBounds(b.y, b.R);
+        b.y = Math.max(cb.yMin, Math.min(cb.yMax, b.y));
+        const cb2 = courtBounds(b.y, b.R);
+        b.x = Math.max(cb2.xMin, Math.min(cb2.xMax, b.x));
+      };
+      const jack = { x: W * (0.32 + rnd() * 0.36), y: H * (0.22 + rnd() * 0.16), z: 0, vx: 0, vy: 0, vz: 0, inAir: false, R: r, m: 0.35, kind: 'bol' };
+      clampIn(jack);
       const balls = [jack];
       for (let k = 0; k < 2; k += 1) {
         const a = rnd() * Math.PI * 2; const d = W * (0.1 + rnd() * 0.14);
-        const b = { x: jack.x + Math.cos(a) * d, y: jack.y + Math.sin(a) * d, vx: 0, vy: 0, R, m: 1, kind: 'oro' }; clampIn(b); balls.push(b);
+        const b = { x: jack.x + Math.cos(a) * d, y: jack.y + Math.sin(a) * d, z: 0, vx: 0, vy: 0, vz: 0, inAir: false, R, m: 1, kind: 'oro', rot: rnd() * 6 };
+        clampIn(b);
+        balls.push(b);
       }
       const ring = { x: W / 2, y: H * 0.86 };
       let left = 3; let cur = null; let aim = null; let rolling = false; let raf = 0; let last = 0; let msg = '';
-      const spawn = () => { cur = { x: ring.x, y: ring.y, vx: 0, vy: 0, R, m: 1, kind: 'plata' }; };
+      const particles = [];
+      const spawn = () => { cur = { x: ring.x, y: ring.y, z: 0, vx: 0, vy: 0, vz: 0, inAir: false, R, m: 1, kind: 'plata', rot: 0 }; };
       spawn();
-      const MU = W * 1.6; const VMAX = W * 2.4;
+
+      const MU = W * 1.6;
+      const GRAV = 2200 * (W / 360);
       const gap = (b) => Math.max(0, Math.hypot(b.x - jack.x, b.y - jack.y) - b.R - jack.R);
       const pos = (e) => { const q = cv.getBoundingClientRect(); return { x: ((e.clientX - q.left) * W) / q.width, y: ((e.clientY - q.top) * H) / q.height }; };
+
+      const calcThrow = (dx, dy) => {
+        const L = Math.hypot(dx, dy);
+        if (L < W * 0.04) return null;
+        const P = Math.min(1, Math.max(0.06, L / (W * 0.55)));
+        const dist = W * (0.28 + 0.95 * P);
+        const T = 0.62 + 0.32 * P;
+        const vz0 = 0.5 * GRAV * T;
+        const vxy = dist / T;
+        const vx = (dx / L) * vxy;
+        const vy = (dy / L) * vxy;
+        const rawLandX = ring.x + (dx / L) * dist;
+        const rawLandY = ring.y + (dy / L) * dist;
+        const cb = courtBounds(rawLandY, R);
+        const landY = Math.max(cb.yMin, Math.min(cb.yMax, rawLandY));
+        const cb2 = courtBounds(landY, R);
+        const landX = Math.max(cb2.xMin, Math.min(cb2.xMax, rawLandX));
+        const zMax = (vz0 * vz0) / (2 * GRAV);
+        return { P, dist, T, vz0, vx, vy, landX, landY, zMax };
+      };
+
       const down = (e) => { if (rolling || !cur || state !== 'running') return; e.preventDefault(); aim = { s: pos(e), e: pos(e) }; try { cv.setPointerCapture(e.pointerId); } catch { /* */ } };
       const move = (e) => { if (aim) aim.e = pos(e); };
       const up = () => {
         if (!aim) return;
         const dx = aim.s.x - aim.e.x; const dy = aim.s.y - aim.e.y; aim = null;
-        const L = Math.hypot(dx, dy); if (L < W * 0.04) return;
-        const v = Math.min(1, L / (W * 0.6)) * VMAX;
-        cur.vx = (dx / L) * v; cur.vy = (dy / L) * v; balls.push(cur); rolling = true; left -= 1; msg = '';
+        const th = calcThrow(dx, dy);
+        if (!th) return;
+        cur.x = ring.x; cur.y = ring.y; cur.z = 0;
+        cur.vx = th.vx; cur.vy = th.vy; cur.vz = th.vz0;
+        cur.inAir = true;
+        balls.push(cur);
+        rolling = true;
+        left -= 1;
+        cur = null;
+        msg = '';
       };
       cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-      const physics = (dt) => {
-        for (const b of balls) {
-          const s = Math.hypot(b.vx, b.vy); if (!s) continue;
-          const ns = Math.max(0, s - MU * dt * (b.kind === 'bol' ? 1.4 : 1));
-          b.vx *= ns / s; b.vy *= ns / s; b.x += b.vx * dt; b.y += b.vy * dt;
-          if (b.x < box.x0 + b.R) { b.x = box.x0 + b.R; b.vx = Math.abs(b.vx) * 0.45; }
-          if (b.x > box.x1 - b.R) { b.x = box.x1 - b.R; b.vx = -Math.abs(b.vx) * 0.45; }
-          if (b.y < box.y0 + b.R) { b.y = box.y0 + b.R; b.vy = Math.abs(b.vy) * 0.45; }
-          if (b.y > box.y1 - b.R) { b.y = box.y1 - b.R; b.vy = -Math.abs(b.vy) * 0.45; }
-        }
-        for (let i = 0; i < balls.length; i += 1) for (let j = i + 1; j < balls.length; j += 1) {
-          const a = balls[i]; const b = balls[j]; const dx = b.x - a.x; const dy = b.y - a.y; const d = Math.hypot(dx, dy); const min = a.R + b.R;
-          if (d >= min || d === 0) continue;
-          const nx = dx / d; const ny = dy / d; const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-          const over = min - d; const ia = 1 / a.m; const ib = 1 / b.m;
-          a.x -= nx * over * ia / (ia + ib); a.y -= ny * over * ia / (ia + ib); b.x += nx * over * ib / (ia + ib); b.y += ny * over * ib / (ia + ib);
-          if (rel < 0) { const jimp = (-(1 + 0.8) * rel) / (ia + ib); a.vx -= jimp * nx * ia; a.vy -= jimp * ny * ia; b.vx += jimp * nx * ib; b.vy += jimp * ny * ib; }
+
+      const spawnDust = (x, y, count = 10) => {
+        for (let i = 0; i < count; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = (0.2 + Math.random() * 0.8) * W * 0.35;
+          particles.push({
+            x, y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 1,
+            decay: 2.2 + Math.random() * 2,
+            size: 2 + Math.random() * 2.5,
+            color: Math.random() < 0.5 ? '#d9c39a' : Math.random() < 0.5 ? '#bfa37c' : '#ede2cf'
+          });
         }
       };
+
+      const enforceBound = (b) => {
+        const cb = courtBounds(b.y, b.R);
+        let bounced = false;
+        if (b.x < cb.xMin) { b.x = cb.xMin; b.vx = Math.abs(b.vx) * 0.45; bounced = true; }
+        else if (b.x > cb.xMax) { b.x = cb.xMax; b.vx = -Math.abs(b.vx) * 0.45; bounced = true; }
+        if (b.y < cb.yMin) { b.y = cb.yMin; b.vy = Math.abs(b.vy) * 0.45; bounced = true; }
+        else if (b.y > cb.yMax) { b.y = cb.yMax; b.vy = -Math.abs(b.vy) * 0.45; bounced = true; }
+        if (bounced && Math.hypot(b.vx, b.vy) > W * 0.05) {
+          SFX.thud();
+          spawnDust(b.x, b.y, 4);
+        }
+      };
+
+      const physics = (dt) => {
+        // Partículas de polvo
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          p.life -= p.decay * dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        for (const b of balls) {
+          if (b.inAir) {
+            b.vz -= GRAV * dt;
+            b.z += b.vz * dt;
+            b.x += b.vx * dt;
+            b.y += b.vy * dt;
+            b.rot = (b.rot || 0) - 10 * dt;
+
+            // Colisiones en el aire / al caer (¡Bochazo directo / Carreau!)
+            if (b.z <= b.R * 1.3 && b.vz < 0) {
+              for (const o of balls) {
+                if (o === b || o.inAir) continue;
+                const d = Math.hypot(o.x - b.x, o.y - b.y);
+                if (d < b.R + o.R) {
+                  SFX.boule();
+                  spawnDust((b.x + o.x) / 2, (b.y + o.y) / 2, 14);
+                  msg = o.kind === 'oro' ? '¡BOCHAZO!' : '¡Toque!';
+                  const nx = (o.x - b.x) / (d || 1); const ny = (o.y - b.y) / (d || 1);
+                  const pushSpd = Math.hypot(b.vx, b.vy) * 0.8;
+                  o.vx += nx * pushSpd * (1 / o.m);
+                  o.vy += ny * pushSpd * (1 / o.m);
+                  b.vx *= 0.2; b.vy *= 0.2; b.vz = 0; b.z = 0; b.inAir = false;
+                  break;
+                }
+              }
+            }
+
+            // Impacto con el suelo
+            if (b.z <= 0) {
+              b.z = 0;
+              spawnDust(b.x, b.y, 10);
+              SFX.thud();
+              b.vz = -b.vz * 0.22;
+              b.vx *= 0.58;
+              b.vy *= 0.58;
+              if (Math.abs(b.vz) < 40) {
+                b.vz = 0;
+                b.inAir = false;
+              }
+            }
+          } else {
+            // Rodando por la gravilla
+            const s = Math.hypot(b.vx, b.vy);
+            if (s > 0) {
+              const ns = Math.max(0, s - MU * dt * (b.kind === 'bol' ? 1.4 : 1));
+              b.vx *= ns / s; b.vy *= ns / s;
+              b.x += b.vx * dt; b.y += b.vy * dt;
+              b.rot = (b.rot || 0) + (ns * dt / b.R) * (b.vx >= 0 ? 1 : -1);
+            }
+          }
+
+          enforceBound(b);
+        }
+
+        // Colisiones entre bolas en el suelo
+        for (let i = 0; i < balls.length; i += 1) {
+          for (let j = i + 1; j < balls.length; j += 1) {
+            const a = balls[i]; const b = balls[j];
+            if (a.inAir || b.inAir) continue;
+            const dx = b.x - a.x; const dy = b.y - a.y; const d = Math.hypot(dx, dy); const min = a.R + b.R;
+            if (d >= min || d === 0) continue;
+            const nx = dx / d; const ny = dy / d; const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+            const over = min - d; const ia = 1 / a.m; const ib = 1 / b.m;
+            a.x -= nx * over * ia / (ia + ib); a.y -= ny * over * ia / (ia + ib);
+            b.x += nx * over * ib / (ia + ib); b.y += ny * over * ib / (ia + ib);
+            if (rel < 0) {
+              const jimp = (-(1 + 0.82) * rel) / (ia + ib);
+              a.vx -= jimp * nx * ia; a.vy -= jimp * ny * ia;
+              b.vx += jimp * nx * ib; b.vy += jimp * ny * ib;
+              if (Math.abs(rel) > W * 0.08) {
+                SFX.boule();
+                spawnDust((a.x + b.x) / 2, (a.y + b.y) / 2, 4);
+              }
+            }
+          }
+        }
+        // Evitar que colisiones entre bolas empujen a una dentro de la madera
+        for (const b of balls) enforceBound(b);
+      };
+
       const draw = () => {
         c.clearRect(0, 0, W, H);
         if (I.pista.complete) c.drawImage(I.pista, 0, 0, W, H); else { c.fillStyle = '#d9c39a'; c.fillRect(0, 0, W, H); }
         if (I.circ.complete) c.drawImage(I.circ, ring.x - R * 1.8, ring.y - R * 1.8, R * 3.6, R * 3.6);
-        for (const b of [...balls, ...(rolling ? [] : [cur])]) {
-          if (!b) continue;
+
+        // Partículas de polvo
+        for (const p of particles) {
+          c.fillStyle = p.color;
+          c.globalAlpha = Math.max(0, p.life);
+          c.beginPath();
+          c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.globalAlpha = 1;
+
+        // Ordenar bolas por Y para perspectiva
+        const allBalls = [...balls, ...(rolling ? [] : [cur])].filter(Boolean);
+        allBalls.sort((a, b) => a.y - b.y);
+
+        // 1. Sombras en el suelo
+        for (const b of allBalls) {
+          if (b.inAir) {
+            const shRatio = Math.max(0.45, 1 - (b.z || 0) / (W * 0.9));
+            const shAlpha = Math.max(0.08, 0.28 * (1 - (b.z || 0) / (W * 0.7)));
+            c.fillStyle = `rgba(0,0,0,${shAlpha.toFixed(2)})`;
+            c.beginPath();
+            c.ellipse(b.x, b.y, b.R * shRatio, b.R * 0.75 * shRatio, 0, 0, Math.PI * 2);
+            c.fill();
+          } else {
+            c.fillStyle = 'rgba(0,0,0,.22)';
+            c.beginPath();
+            c.ellipse(b.x + b.R * 0.15, b.y + b.R * 0.25, b.R, b.R * 0.8, 0, 0, Math.PI * 2);
+            c.fill();
+          }
+        }
+
+        // 2. Bolas (elevadas con b.z)
+        for (const b of allBalls) {
           const img = b.kind === 'bol' ? I.bol : b.kind === 'oro' ? I.oro : I.plata;
-          c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(b.x + b.R * 0.15, b.y + b.R * 0.25, b.R, b.R * 0.8, 0, 0, Math.PI * 2); c.fill();
-          if (img.complete) c.drawImage(img, b.x - b.R, b.y - b.R, b.R * 2, b.R * 2);
+          const drawY = b.y - (b.z || 0);
+          const scale = 1 + 0.35 * Math.min(1, (b.z || 0) / (W * 0.45));
+          const drawR = b.R * scale;
+          if (img.complete) {
+            c.save();
+            c.translate(b.x, drawY);
+            c.rotate(b.rot || 0);
+            c.drawImage(img, -drawR, -drawR, drawR * 2, drawR * 2);
+            c.restore();
+          }
         }
+
+        // Previsualización de la parábola mientras se apunta
         if (aim && cur) {
-          const dx = aim.s.x - aim.e.x; const dy = aim.s.y - aim.e.y; const L = Math.min(Math.hypot(dx, dy), W * 0.6);
-          const a = Math.atan2(dy, dx); const len = L * 1.3;
-          c.strokeStyle = 'rgba(214,64,52,.9)'; c.lineWidth = 5; c.setLineDash([10, 8]); c.beginPath(); c.moveTo(cur.x, cur.y); c.lineTo(cur.x + Math.cos(a) * len, cur.y + Math.sin(a) * len); c.stroke(); c.setLineDash([]);
-          c.fillStyle = '#fff'; c.font = '800 15px Nunito, sans-serif'; c.fillText(`Fuerza ${Math.round((L / (W * 0.6)) * 100)} %`, 10, H - 12);
+          const dx = aim.s.x - aim.e.x; const dy = aim.s.y - aim.e.y;
+          const th = calcThrow(dx, dy);
+          if (th) {
+            // Sombra en el suelo
+            c.save();
+            c.strokeStyle = 'rgba(60, 40, 20, 0.35)';
+            c.lineWidth = 2;
+            c.setLineDash([4, 6]);
+            c.beginPath();
+            c.moveTo(ring.x, ring.y);
+            c.lineTo(th.landX, th.landY);
+            c.stroke();
+
+            // Marcador de impacto en la gravilla
+            c.setLineDash([]);
+            c.strokeStyle = 'rgba(230, 119, 0, 0.9)';
+            c.lineWidth = 3;
+            c.beginPath();
+            c.ellipse(th.landX, th.landY, R * 1.3, R * 0.9, 0, 0, Math.PI * 2);
+            c.stroke();
+            c.fillStyle = 'rgba(230, 119, 0, 0.25)';
+            c.fill();
+            c.fillStyle = '#ff922b';
+            c.beginPath();
+            c.arc(th.landX, th.landY, 3.5, 0, Math.PI * 2);
+            c.fill();
+
+            // Trayectoria aérea parabólica
+            const steps = 24;
+            c.strokeStyle = '#ffffff';
+            c.lineWidth = 3.5;
+            c.setLineDash([6, 5]);
+            c.beginPath();
+            for (let i = 0; i <= steps; i++) {
+              const ti = th.T * (i / steps);
+              const xi = ring.x + th.vx * ti;
+              const yi = ring.y + th.vy * ti;
+              const zi = th.vz0 * ti - 0.5 * GRAV * ti * ti;
+              const scrY = yi - zi;
+              if (i === 0) c.moveTo(xi, scrY);
+              else c.lineTo(xi, scrY);
+            }
+            c.stroke();
+
+            // Estimación de rodada tras el bote
+            const rollLen = th.dist * 0.22;
+            const hSpd = Math.hypot(th.vx, th.vy) || 1;
+            const rollX = th.landX + (th.vx / hSpd) * rollLen;
+            const rollY = th.landY + (th.vy / hSpd) * rollLen;
+            c.strokeStyle = 'rgba(255, 212, 59, 0.85)';
+            c.lineWidth = 2.5;
+            c.setLineDash([3, 4]);
+            c.beginPath();
+            c.moveTo(th.landX, th.landY);
+            c.lineTo(rollX, rollY);
+            c.stroke();
+            c.restore();
+
+            // HUD de lanzamiento
+            c.fillStyle = '#fff';
+            c.strokeStyle = 'rgba(0,0,0,.75)';
+            c.lineWidth = 3.5;
+            c.font = '800 14px Nunito, sans-serif';
+            const infoTxt = `Fuerza ${Math.round(th.P * 100)} % · Parábola (caída: ${Math.round(th.dist / (W * 0.01))} cm)`;
+            c.strokeText(infoTxt, 10, H - 12);
+            c.fillText(infoTxt, 10, H - 12);
+          }
         }
+
+        // Contador de bolas y estado
         c.fillStyle = '#fff'; c.strokeStyle = 'rgba(60,40,20,.8)'; c.lineWidth = 4; c.font = '800 18px Nunito, sans-serif';
-        const txt = `Bolas: ${left}${msg ? ` · ${msg}` : ''}`; c.strokeText(txt, 10, 26); c.fillText(txt, 10, 26);
+        const txt = `Bolas: ${left}${msg ? ` · ${msg}` : ''}`;
+        c.strokeText(txt, 10, 26); c.fillText(txt, 10, 26);
       };
+
       const loop = (t) => {
         const dt = last ? Math.min((t - last) / 1000, 0.033) : 0; last = t;
         for (let k = 0; k < 3; k += 1) physics(dt / 3);
-        if (rolling && balls.every((b) => !Math.hypot(b.vx, b.vy))) {
+        if (rolling && balls.every((b) => !b.inAir && !Math.hypot(b.vx, b.vy))) {
           rolling = false;
-          const mine = balls.filter((b) => b.kind === 'plata'); const best = Math.min(...mine.map(gap)); const rival = Math.min(...balls.filter((b) => b.kind === 'oro').map(gap));
+          const mine = balls.filter((b) => b.kind === 'plata');
+          const best = Math.min(...mine.map(gap));
+          const rival = Math.min(...balls.filter((b) => b.kind === 'oro').map(gap));
           msg = best < rival ? '¡ganas el punto!' : 'el rival gana';
           if (left === 0) {
             draw();
@@ -1210,13 +2036,16 @@ function openGame(kind, opts = {}) {
         draw(); raf = requestAnimationFrame(loop);
       };
       raf = requestAnimationFrame(loop);
-      goBtn.textContent = 'Arrastra hacia atrás y suelta'; goBtn.disabled = true;
+      goBtn.textContent = 'Arrastra hacia atrás y suelta para lanzar'; goBtn.disabled = true;
       cleanup = () => { cancelAnimationFrame(raf); cv.removeEventListener('pointerdown', down); cv.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
       return null;
     },
     // Aparcar la caravana marcha atrás en la parcela (vista desde arriba). La caravana gira al revés
     // que el volante al ir hacia atrás, como en la vida real. Sin tocar setos ni la mesa; los conos restan.
     aparcar() {
+      ctrl.innerHTML = `<div class="drive"><button class="btn" data-gear="1">▲ Adelante</button>
+        <label class="wheel">🛞 Volante<input type="range" min="-100" max="100" value="0" data-wheel></label>
+        <button class="btn" data-gear="-1">▼ Atrás</button></div>`;
       const { c, W, H } = mkCanvas(stage, 1.45);
       const I = { coche: loadImg('ap_coche'), car: loadImg('ap_caravana'), par: loadImg('ap_parcela'), cono: loadImg('ap_cono'), mesa: loadImg('ap_mesa') };
       const pw = W * 0.7; const ph = (pw * 341) / 493; const px = (W - pw) / 2 + (rnd() - 0.5) * W * 0.1; const py = H - ph - W * 0.02;
@@ -1226,19 +2055,16 @@ function openGame(kind, opts = {}) {
       const mesa = { x0: mLeft ? inner.x0 + W * 0.01 : inner.x1 - mw - W * 0.01, x1: 0, y0: inner.y1 - mh - W * 0.01, y1: inner.y1 - W * 0.01 }; mesa.x1 = mesa.x0 + mw;
       const cones = [{ x: inner.x0 - W * 0.03, y: py - W * 0.05, r: W * 0.03, hit: false }, { x: inner.x1 + W * 0.03, y: py - W * 0.05, r: W * 0.03, hit: false }];
       // vehículo: P = eje trasero del coche, th = rumbo del coche, ph2 = rumbo de la caravana (hacia el enganche)
-      const L = W * 0.12; const HOFF = W * 0.05; const LT = W * 0.2;
+      const L = W * 0.12; const HOFF = W * 0.05; const LT = W * 0.17;
       const st = { x: W * 0.5 + (rnd() - 0.5) * W * 0.3, y: H * 0.17, th: -Math.PI / 2 + (rnd() - 0.5) * 0.3, ph2: -Math.PI / 2 + (rnd() - 0.5) * 0.4, delta: 0, gear: 0, t: 0, hits: 0, over: null, still: 0 };
       const dir = (a) => [Math.cos(a), Math.sin(a)];
       const hitch = () => { const [dx, dy] = dir(st.th); return [st.x - dx * HOFF, st.y - dy * HOFF]; };
       const carBox = () => { const [dx, dy] = dir(st.th); return { cx: st.x + dx * W * 0.06, cy: st.y + dy * W * 0.06, a: st.th, l: W * 0.2, w: W * 0.105 }; };
-      const vanBox = () => { const [hx, hy] = hitch(); const [dx, dy] = dir(st.ph2); return { cx: hx - dx * W * 0.18, cy: hy - dy * W * 0.18, a: st.ph2, l: W * 0.26, w: W * 0.13 }; };
+      const vanBox = () => { const [hx, hy] = hitch(); const [dx, dy] = dir(st.ph2); return { cx: hx - dx * W * 0.14, cy: hy - dy * W * 0.14, a: st.ph2, l: W * 0.24, w: W * 0.13 }; };
       const corners = (b) => { const [dx, dy] = dir(b.a); const nx = -dy; const ny = dx; const pts = []; for (const [u, v] of [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]]) pts.push([b.cx + dx * u * b.l / 2 + nx * v * b.w / 2, b.cy + dy * u * b.l / 2 + ny * v * b.w / 2]); return pts; };
       const inRect = ([x, y], q) => x > q.x0 && x < q.x1 && y > q.y0 && y < q.y1;
       const circHit = (b, o) => { const [dx, dy] = dir(b.a); const rx = o.x - b.cx; const ry = o.y - b.cy; const u = rx * dx + ry * dy; const v = -rx * dy + ry * dx; return Math.abs(u) < b.l / 2 + o.r && Math.abs(v) < b.w / 2 + o.r; };
       const startY = vanBox().cy; const goalY = (inner.y0 + inner.y1) / 2;
-      ctrl.innerHTML = `<div class="drive"><button class="btn" data-gear="1">▲ Adelante</button>
-        <label class="wheel">🛞 Volante<input type="range" min="-100" max="100" value="0" data-wheel></label>
-        <button class="btn" data-gear="-1">▼ Atrás</button></div>`;
       const wheel = ctrl.querySelector('[data-wheel]');
       const onWheel = () => { st.delta = (Number(wheel.value) / 100) * 0.6; };
       wheel.addEventListener('input', onWheel);
@@ -1254,7 +2080,7 @@ function openGame(kind, opts = {}) {
         if (I.mesa.complete) c.drawImage(I.mesa, mesa.x0, mesa.y0, mw, mh);
         for (const o of cones) if (!o.hit) drawImg(I.cono, o.x, o.y, o.r * 2.2, o.r * 2.2, 0);
         const vb = vanBox(); const cb = carBox();
-        drawImg(I.car, vb.cx, vb.cy + 0, W * 0.16, W * 0.27, vb.a - Math.PI / 2);
+        drawImg(I.car, vb.cx - Math.cos(vb.a) * W * 0.005, vb.cy - Math.sin(vb.a) * W * 0.005, W * 0.16, W * 0.27, vb.a - Math.PI / 2);
         drawImg(I.coche, cb.cx, cb.cy, W * 0.125, W * 0.2, cb.a - Math.PI / 2);
         c.fillStyle = '#fff'; c.strokeStyle = 'rgba(60,40,20,.8)'; c.lineWidth = 4; c.font = '800 17px Nunito, sans-serif';
         const txt = `${Math.max(0, Math.ceil(60 - st.t))} s${st.hits ? ` · conos: ${st.hits}` : ''}`; c.strokeText(txt, 10, 24); c.fillText(txt, 10, 24);
@@ -1277,13 +2103,13 @@ function openGame(kind, opts = {}) {
           st.th += dth * dt;
         }
         const vb = vanBox(); const cb = carBox(); const pts = [...corners(vb), ...corners(cb)];
-        if (pts.some((p) => walls.some((q) => inRect(p, q)) || inRect(p, mesa))) return end(false, '¡Te has llevado el seto por delante!');
-        if (pts.some(([x, y]) => x < 0 || y < 0 || x > W || y > H)) return end(false, '¡Te has salido del camino!');
-        if (Math.abs(angd(st.th, st.ph2)) > 1.45) return end(false, '¡Tijera! La caravana se ha cruzado.');
-        for (const o of cones) if (!o.hit && (circHit(vb, o) || circHit(cb, o))) { o.hit = true; st.hits += 1; }
+        if (pts.some((p) => walls.some((q) => inRect(p, q)) || inRect(p, mesa))) { SFX.buzzer(); vib([60, 40, 80]); return end(false, '¡Te has llevado el seto por delante!'); }
+        if (pts.some(([x, y]) => x < 0 || y < 0 || x > W || y > H)) { SFX.buzzer(); vib([50, 40, 60]); return end(false, '¡Te has salido del camino!'); }
+        if (Math.abs(angd(st.th, st.ph2)) > 1.45) { SFX.buzzer(); vib([50, 40, 60]); return end(false, '¡Tijera! La caravana se ha cruzado.'); }
+        for (const o of cones) if (!o.hit && (circHit(vb, o) || circHit(cb, o))) { o.hit = true; st.hits += 1; SFX.thud(); vib(25); }
         const parked = corners(vb).slice(0, 4).every((p) => inRect(p, inner)) && Math.abs(angd(st.ph2, -Math.PI / 2)) < 0.35;
         st.still = parked && !v ? st.still + dt : 0;
-        if (st.still > 0.6) return end(true, `¡Aparcada en ${Math.round(st.t)} s${st.hits ? ` (y ${st.hits} cono${st.hits > 1 ? 's' : ''} por los aires)` : ''}!`);
+        if (st.still > 0.6) { SFX.fanfare(); vib([30, 40, 60, 100]); return end(true, `¡Aparcada en ${Math.round(st.t)} s${st.hits ? ` (y ${st.hits} cono${st.hits > 1 ? 's' : ''} por los aires)` : ''}!`); }
         if (st.t >= 60) return end(false, 'Se ha hecho de noche y la caravana sigue en el camino.');
         draw(); raf = requestAnimationFrame(loop);
       };
@@ -1298,32 +2124,56 @@ function openGame(kind, opts = {}) {
       const N = 6; let k = 0; let good = 0; let bentTotal = 0; let raf = 0; let t0 = 0; let lock = false;
       const pegs = Array.from({ length: N }, () => ({ depth: 0, bent: 0 }));
       stage.innerHTML = `<div class="avance"><img class="av-bg" src="${IMG('parcela_2_iglu')}" alt="">
-        <div class="pq-row">${pegs.map((_, i) => `<div class="pq" data-i="${i}"><img src="${IMG('mj_piqueta')}" alt=""></div>`).join('')}</div><div class="hammer">🔨</div></div>`;
+        <div class="pq-row">${pegs.map((_, i) => `<div class="pq" data-i="${i}"><img src="${IMG('mj_piqueta')}" alt=""></div>`).join('')}</div><div class="hammer">${SVG_MALLET}</div>
+        <div class="cnt pq-help">Toca cuando la <b>marca roja</b> pase por el <b>verde</b>. Dos golpes buenos clavan la piqueta.</div></div>`;
       ctrl.innerHTML = '<div class="bar"><div class="zone best"></div><div class="marker"></div></div>';
       const zone = ctrl.querySelector('.zone'); const marker = ctrl.querySelector('.marker');
       const els = [...stage.querySelectorAll('.pq')]; const hammer = stage.querySelector('.hammer');
       let zx = 0; let zw = 0; let pos = 0;
       const setup = () => {
-        if (k >= N) return finish(Math.max(0, (good - bentTotal * 0.5) / (N * 2)), `${pegs.filter((p) => p.depth >= 2).length} de ${N} piquetas bien clavadas.`);
+        if (k >= N) { help.remove(); return finish(Math.max(0, (good - bentTotal * 0.5) / (N * 2)), `${pegs.filter((p) => p.depth >= 2).length} de ${N} piquetas bien clavadas.`); }
         zw = 0.24 - k * 0.022; zx = 0.08 + rnd() * (0.84 - zw);
         zone.style.left = `${zx * 100}%`; zone.style.width = `${zw * 100}%`;
         els.forEach((el, i) => el.classList.toggle('cur', i === k));
-        hammer.style.left = `${((k + 0.5) / N) * 100}%`; t0 = performance.now();
+        placeHammer(); t0 = performance.now();
+        help.innerHTML = `Piqueta <b>${k + 1} de ${N}</b>: toca cuando la marca roja pase por el verde.`;
       };
-      const loop = (t) => { const el = (t - t0) / 1000; const sp = 0.8 + k * 0.18; pos = (Math.sin(el * sp * Math.PI - Math.PI / 2) + 1) / 2; marker.style.left = `${pos * 100}%`; raf = requestAnimationFrame(loop); };
+      const help = stage.querySelector('.pq-help'); const av = stage.querySelector('.avance');
+      // el mazo se coloca justo encima de la cabeza de la piqueta actual (también cuando se hunde)
+      const placeHammer = () => {
+        const img = els[Math.min(k, N - 1)].querySelector('img'); const a = av.getBoundingClientRect(); const q = img.getBoundingClientRect();
+        hammer.style.left = `${q.left - a.left + q.width / 2 - 24}px`; hammer.style.top = `${q.top - a.top + q.height * 0.06 - 58}px`;
+      };
+      stage.addEventListener('pointerdown', (e) => { if (state === 'running' && hit) { e.preventDefault(); hit(); } });
+      const loop = (t) => { const el = (t - t0) / 1000; const sp = 0.55 + k * 0.13; pos = (Math.sin(el * sp * Math.PI - Math.PI / 2) + 1) / 2; marker.style.left = `${pos * 100}%`; raf = requestAnimationFrame(loop); };
       raf = requestAnimationFrame(loop);
+      let hit = null;
+      cleanup = () => cancelAnimationFrame(raf);
       setup();
+      els.forEach((el) => { const im = el.querySelector('img'); if (!im.complete) im.addEventListener('load', placeHammer); });
+      requestAnimationFrame(placeHammer); setTimeout(placeHammer, 250);
       goBtn.textContent = '¡Martillazo!';
-      return () => {
+      hit = () => {
         if (lock || k >= N) return;
         const p = pegs[k]; const el = els[k]; const ok = pos >= zx && pos <= zx + zw;
         hammer.classList.remove('hit'); void hammer.offsetWidth; hammer.classList.add('hit');
-        if (ok) { p.depth += 1; good += 1; } else { p.bent += 1; bentTotal += 1; }
+        if (ok) {
+          p.depth += 1; good += 1;
+          SFX.clonk();
+          vib([25, 30]);
+          if (p.depth >= 2) SFX.coin();
+        } else {
+          p.bent += 1; bentTotal += 1;
+          SFX.thud();
+          vib(55);
+        }
         el.style.setProperty('--d', p.depth); el.style.setProperty('--b', p.bent);
         el.classList.toggle('bent', p.bent > 0);
+        setTimeout(placeHammer, 170);
         result.textContent = ok ? (p.depth >= 2 ? '¡Clavada!' : '¡Toc!') : '¡Doblada!';
         if (p.depth >= 2 || p.bent >= 2) { k += 1; lock = true; setTimeout(() => { lock = false; result.textContent = ''; setup(); }, 380); }
       };
+      return hit;
     },
     // Cazar mosquitos con la raqueta eléctrica: arrastra la raqueta por la pantalla y fríelos.
     // Cuidado con la vecina, que pasa de vez en cuando.
@@ -1380,20 +2230,24 @@ function openGame(kind, opts = {}) {
     // El café de la cafetera italiana: quítala del fuego justo cuando sube (ni antes ni quemado)
     // y luego llena 3 tazas manteniendo pulsado, hasta su raya.
     cafe() {
-      stage.innerHTML = `<div class="moka"><div class="stove"><img class="pot" src="${IMG('mj_moka')}" alt=""><img class="fire" src="${IMG('mj_hornillo')}" alt=""></div><div class="cups"></div><div class="cnt"></div></div>`;
+      const tUp = 2.6 + rnd() * 2.6; const WIN = 1.5; const TOT = tUp + WIN + 1.2;
+      stage.innerHTML = `<div class="moka"><div class="stove"><img class="pot" src="${IMG('mj_moka')}" alt=""><img class="fire" src="${IMG('mj_hornillo')}" alt=""></div>
+        <div class="heat"><div class="seg wait" style="width:${(tUp / TOT) * 100}%">calentando</div><div class="seg up" style="width:${(WIN / TOT) * 100}%">¡ya!</div><div class="seg burn">¡quema!</div><i class="mk"></i></div>
+        <div class="cups"></div><div class="cnt"></div></div>`;
       const pot = stage.querySelector('.pot'); const cups = stage.querySelector('.cups'); const cnt = stage.querySelector('.cnt'); const stove = stage.querySelector('.stove');
-      const tUp = 2.6 + rnd() * 2.6; const WIN = 1.5; const t0 = performance.now(); let phase = 'fuego'; let a = 0; let raf = 0;
+      const heatBar = stage.querySelector('.heat'); const mk = stage.querySelector('.heat .mk'); const t0 = performance.now(); let phase = 'fuego'; let a = 0; let raf = 0;
       const targets = [0.45 + rnd() * 0.15, 0.6 + rnd() * 0.15, 0.75 + rnd() * 0.12]; const fills = [0, 0, 0]; let ci = 0; let pouring = false; let last = 0; const scores = [];
-      cnt.textContent = 'Espera a que suba el café…';
+      cnt.textContent = 'Quítala cuando la marca llegue al verde.';
       const heat = (t) => {
         const el = (t - t0) / 1000;
-        if (el >= tUp) pot.src = IMG('mj_moka_vapor');
+        mk.style.left = `${Math.min(1, el / TOT) * 100}%`;
+        if (el >= tUp && !pot.src.includes('vapor')) { pot.src = IMG('mj_moka_vapor'); cnt.textContent = '¡Ha subido! Quítala ya'; }
         if (el >= tUp + WIN) { stove.classList.add('burnt'); cnt.textContent = '¡Huele a quemado!'; }
         if (el >= tUp + WIN + 1.2) { a = 0; return startCups('Se te ha quemado el café.'); }
         raf = requestAnimationFrame(heat);
       };
       const startCups = (label) => {
-        cancelAnimationFrame(raf); phase = 'tazas'; stove.classList.add('off');
+        cancelAnimationFrame(raf); phase = 'tazas'; stove.classList.add('off'); heatBar.remove();
         cups.innerHTML = targets.map((tg, i) => `<div class="cup ${i === 0 ? 'cur' : ''}"><img src="${IMG('mj_taza_vacia')}" alt=""><div class="gauge"><div class="fill"></div><div class="line" style="bottom:${tg * 100}%"></div></div></div>`).join('');
         cnt.textContent = `${label} Ahora llena las tazas hasta la raya.`; goBtn.textContent = 'Mantén para servir';
         raf = requestAnimationFrame(pour);
@@ -1410,10 +2264,16 @@ function openGame(kind, opts = {}) {
       const nextCup = () => {
         const d = Math.abs(fills[ci] - targets[ci]); const s = fills[ci] >= 1 ? 0 : fills[ci] < 0.05 ? 0 : d <= 0.04 ? 1 : Math.max(0, 1 - (d - 0.04) / 0.3);
         scores.push(s); const el = cups.children[ci]; el.classList.remove('cur'); if (s > 0.5) el.querySelector('img').src = IMG('mj_taza_llena'); el.classList.add(s > 0.7 ? 'ok' : 'ko');
+        if (s > 0.7) { SFX.coin(); vib(20); } else { SFX.thud(); vib(35); }
         ci += 1; if (ci < 3) cups.children[ci].classList.add('cur');
-        if (ci >= 3) { const b = scores.reduce((x, y) => x + y, 0) / 3; finish(Math.max(0, Math.min(1, a + 0.6 * b)), a >= 0.35 ? '¡Café en su punto!' : a > 0.1 ? 'El café estaba flojo…' : 'El café sabía a quemado…'); }
+        if (ci >= 3) {
+          const b = scores.reduce((x, y) => x + y, 0) / 3;
+          const tot = Math.max(0, Math.min(1, a + 0.6 * b));
+          if (tot >= 0.7) SFX.fanfare();
+          finish(tot, a >= 0.35 ? '¡Café en su punto!' : a > 0.1 ? 'El café estaba flojo…' : 'El café sabía a quemado…');
+        }
       };
-      const down = (e) => { if (phase !== 'tazas' || state !== 'running' || ci >= 3) return; e.preventDefault(); pouring = true; };
+      const down = (e) => { if (phase !== 'tazas' || state !== 'running' || ci >= 3) return; e.preventDefault(); pouring = true; SFX.pour(); };
       const up = () => { if (!pouring) return; pouring = false; nextCup(); };
       goBtn.addEventListener('pointerdown', down); goBtn.addEventListener('pointerup', up); goBtn.addEventListener('pointerleave', up);
       raf = requestAnimationFrame(heat);
@@ -1468,38 +2328,43 @@ function openGame(kind, opts = {}) {
       const sky = stage.querySelector('.sky'); const plate = stage.querySelector('.plate'); const slots = stage.querySelector('.slots'); const cnt = stage.querySelector('.cnt');
       const TOTAL = 12; const COOK = 2.2; const BURN = 5.2;
       let px = 0.5; let raf = 0; let last = 0; let spawned = 0; let nextAt = 600; const fish = []; const onPlate = []; let served = 0; let burnt = 0; let raw = 0; let missed = 0;
-      const move = (e) => { const r = sky.getBoundingClientRect(); px = Math.max(0.2, Math.min(0.8, (e.clientX - r.left) / r.width)); };
+      const move = (e) => { const r = sky.getBoundingClientRect(); px = Math.max(0.24, Math.min(0.76, (e.clientX - r.left) / r.width)); };
       sky.addEventListener('pointermove', move); sky.addEventListener('pointerdown', move);
       const serve = (o) => {
         if (o.gone) return; o.gone = true; const i = onPlate.indexOf(o); if (i >= 0) onPlate.splice(i, 1);
-        if (o.cook >= BURN) burnt += 1; else if (o.cook >= COOK) served += 1; else raw += 1;
-        o.el.classList.add('served'); setTimeout(() => o.el.remove(), 300); layout();
+        if (o.cook >= BURN) { burnt += 1; SFX.buzzer(); vib([40, 30, 40]); }
+        else if (o.cook >= COOK) { served += 1; SFX.coin(); vib([20, 20]); }
+        else { raw += 1; SFX.thud(); vib(35); }
+        o.el.classList.add('served'); setTimeout(() => o.el.remove(), 250); layout();
       };
-      const layout = () => onPlate.forEach((o, i) => { o.el.style.left = `${12 + i * 25}%`; });
+      const layout = () => onPlate.forEach((o, i) => { o.el.style.left = `${10 + i * 22}%`; });
       const loop = (t) => {
         const dt = last ? (t - last) / 1000 : 0; last = t;
         plate.style.left = `${px * 100}%`;
         if (spawned < TOTAL && t >= nextAt) {
           const f = document.createElement('img'); f.src = IMG('sd_cruda'); f.className = 'sardine';
-          const o = { el: f, x: 0.12 + rnd() * 0.76, y: -0.1, v: 0.3 + spawned * 0.03 };
+          const o = { el: f, x: 0.14 + rnd() * 0.72, y: -0.1, v: 0.3 + spawned * 0.03 };
           f.style.left = `${o.x * 100}%`; sky.appendChild(f); fish.push(o); spawned += 1; nextAt = t + 1700 - spawned * 60;
         }
         for (const o of fish) {
           if (o.done) continue; o.y += o.v * dt; o.el.style.top = `${o.y * 100}%`;
-          if (o.y >= 0.74) {
+          if (o.y >= 0.73) {
             o.done = true;
-            if (Math.abs(o.x - px) < 0.19 && onPlate.length < 4) {
+            if (Math.abs(o.x - px) < 0.28 && onPlate.length < 4) {
               o.el.remove(); const s = document.createElement('img'); s.className = 'grilled'; s.src = IMG('sd_cruda'); slots.appendChild(s);
               const g = { el: s, cook: 0, gone: false }; onPlate.push(g); layout();
+              SFX.click(); vib(15);
               s.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); serve(g); });
             } else { missed += 1; o.el.classList.add('miss'); setTimeout(() => o.el.remove(), 300); }
           }
         }
         for (const g of onPlate) {
-          g.cook += dt; const img = g.cook >= BURN ? 'sd_quemada' : g.cook >= COOK ? 'sd_hecha' : 'sd_cruda';
+          g.cook += dt; const isBurnt = g.cook >= BURN; const isDone = g.cook >= COOK && !isBurnt;
+          const img = isBurnt ? 'sd_quemada' : isDone ? 'sd_hecha' : 'sd_cruda';
           if (!g.el.src.endsWith(`${img}.webp`)) g.el.src = IMG(img);
-          g.el.classList.toggle('ready', g.cook >= COOK && g.cook < BURN);
-          if (g.cook >= BURN + 2.5) serve(g);
+          g.el.classList.toggle('ready', isDone);
+          g.el.classList.toggle('burnt', isBurnt);
+          if (g.cook >= BURN + 2.0) serve(g);
         }
         cnt.textContent = `Servidas ${served} · quemadas ${burnt}`;
         if (spawned === TOTAL && fish.every((o) => o.done) && !onPlate.length) {
@@ -1529,7 +2394,9 @@ function openGame(kind, opts = {}) {
         seatEls[i].className = 'seat in';
       };
       const leave = (i, ok) => {
-        if (!seats[i]) return; if (ok) served += 1; else angry += 1;
+        if (!seats[i]) return;
+        if (ok) { served += 1; SFX.coin(); vib(20); }
+        else { angry += 1; SFX.buzzer(); vib(45); }
         seatEls[i].className = `seat ${ok ? 'happy' : 'angry'}`; seatEls[i].querySelector('.bubble2').innerHTML = ok ? '😋' : '😠';
         seats[i] = null; setTimeout(() => { if (!seats[i]) { seatEls[i].className = 'seat'; seatEls[i].querySelector('.who').innerHTML = ''; } }, 600);
       };
@@ -1561,43 +2428,40 @@ function openGame(kind, opts = {}) {
       cleanup = () => { cancelAnimationFrame(raf); ctrl.removeEventListener('pointerdown', pd); window.removeEventListener('pointermove', pm); window.removeEventListener('pointerup', pu); stage.removeEventListener('click', tapSeat); document.querySelectorAll('.drag-ghost').forEach((x) => x.remove()); };
       return null;
     },
-    // Aguantar la sombrilla 15 s contra las rachas: inclina el móvil hacia el lado contrario
-    // del viento, o arrastra el dedo hacia ese lado.
+    // Aguantar la sombrilla 15 s contra las rachas: mantén pulsado el lado contrario al viento
+    // (o arrastra el dedo hacia ese lado). Si se inclina más de 70°, se vuela.
     sombrilla() {
-      const DUR = 15; const gusts = Array.from({ length: 20 }, (_, k) => (rnd() < 0.5 ? -1 : 1) * (18 + rnd() * (10 + k * 2.5)));
-      stage.innerHTML = `<div class="umb"><img class="pole" src="${IMG('mj_sombrilla')}" alt=""><div class="windfx"></div><div class="wind"></div><div class="cnt"></div></div>`;
+      const DUR = 15;
+      const gusts = Array.from({ length: 16 }, (_, k) => (rnd() < 0.5 ? -1 : 1) * (22 + rnd() * (12 + k * 3.2)));
+      stage.innerHTML = `<div class="umb"><img class="pole" src="${IMG('mj_sombrilla')}" alt=""><div class="windfx"></div><div class="wind"></div><div class="tilt"><i></i><b></b></div><div class="cnt"></div></div>`;
+      ctrl.innerHTML = '<div class="push"><button class="btn" data-push="-1">◀ Sujeta</button><button class="btn" data-push="1">Sujeta ▶</button></div>';
       const pole = stage.querySelector('.pole'); const windEl = stage.querySelector('.wind'); const cnt = stage.querySelector('.cnt'); const box = stage.querySelector('.umb'); const fx = stage.querySelector('.windfx');
-      let angle = 0; let vel = 0; let control = 0; let touching = false; let tilt = null; let inZone = 0; let raf = 0; let last = 0; const t0 = performance.now();
-      const onTilt = (e) => { if (e.gamma != null) tilt = Math.max(-1, Math.min(1, e.gamma / 25)); };
-      const listenTilt = () => window.addEventListener('deviceorientation', onTilt);
-      try {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission().then((r) => { if (r === 'granted') listenTilt(); }).catch(() => {});
-        } else listenTilt();
-      } catch { /* sin sensor: se juega con el dedo */ }
-      const drag = (e) => { const r = box.getBoundingClientRect(); control = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2.4)); };
-      const pd = (e) => { e.preventDefault(); touching = true; drag(e); };
-      const pm = (e) => { if (touching) drag(e); };
-      const up = () => { touching = false; control = 0; };
-      box.addEventListener('pointerdown', pd); box.addEventListener('pointermove', pm); window.addEventListener('pointerup', up);
+      const needle = stage.querySelector('.tilt b');
+      let angle = 0; let vel = 0; let push = 0; let dragX = null; let inZone = 0; let raf = 0; let last = 0; let wind = 0; const t0 = performance.now() + 1200;
+      const pd = (e) => { const b = e.target.closest('[data-push]'); if (!b || state !== 'running') return; e.preventDefault(); push = Number(b.dataset.push); b.classList.add('on'); };
+      const pu = () => { push = 0; dragX = null; ctrl.querySelectorAll('[data-push]').forEach((b) => b.classList.remove('on')); };
+      const bd = (e) => { if (state !== 'running') return; e.preventDefault(); dragX = e.clientX; try { box.setPointerCapture(e.pointerId); } catch { /* */ } };
+      const bm = (e) => { if (dragX == null) return; push = Math.max(-1, Math.min(1, (e.clientX - dragX) / 70)); };
+      ctrl.addEventListener('pointerdown', pd); box.addEventListener('pointerdown', bd); box.addEventListener('pointermove', bm); window.addEventListener('pointerup', pu); window.addEventListener('pointercancel', pu);
       goBtn.textContent = 'Aguanta…'; goBtn.disabled = true;
       const loop = (t) => {
         const dt = last ? Math.min((t - last) / 1000, 0.05) : 0; last = t;
-        const el = (t - t0) / 1000; const g = gusts[Math.min(gusts.length - 1, Math.floor(el / 1.1))];
-        const ctl = touching ? control : tilt ?? 0;
-        vel += (g + angle * 1.1 + ctl * 120) * dt; vel *= 0.94; angle += vel * dt;
-        pole.style.transform = `rotate(${angle}deg)`;
-        windEl.textContent = `Viento ${g > 0 ? '→' : '←'} ${Math.round(Math.abs(g) / 8)}`;
-        fx.className = `windfx ${g > 0 ? 'r' : 'l'}`;
-        if (Math.abs(angle) <= 15) inZone += dt;
-        cnt.textContent = `${Math.max(0, DUR - el).toFixed(1)} s · recta ${inZone.toFixed(1)} s${tilt == null ? ' · usa el dedo' : ''}`;
-        box.classList.toggle('ok', Math.abs(angle) <= 15);
-        if (Math.abs(angle) > 70) return finish(inZone / DUR, `¡Se ha volado! Aguantó recta ${inZone.toFixed(1)} s.`);
-        if (el >= DUR) return finish(Math.min(1, inZone / (DUR * 0.9)), `Aguantó recta ${inZone.toFixed(1)} de ${DUR} s.`);
+        const el = (t - t0) / 1000;
+        if (el < 0) { cnt.textContent = '¡Prepárate! El viento empieza ya…'; raf = requestAnimationFrame(loop); return; }
+        const target = gusts[Math.min(gusts.length - 1, Math.floor(el / 1.3))]; wind += (target - wind) * Math.min(1, dt * 2.5);
+        vel += (wind + angle * 2.0 + push * 70) * dt; vel *= Math.exp(-2.2 * dt); angle += vel * dt;
+        pole.style.transform = `rotate(${angle}deg)`; needle.style.left = `${50 + Math.max(-50, Math.min(50, (angle / 70) * 50))}%`;
+        windEl.textContent = wind > 0 ? `Viento ➜ ${Math.round(Math.abs(wind) / 7)}` : `${Math.round(Math.abs(wind) / 7)} ⬅ Viento`;
+        fx.className = `windfx ${wind > 0 ? 'r' : 'l'}`;
+        const ok = Math.abs(angle) <= 15; if (ok) inZone += dt;
+        cnt.textContent = `${Math.max(0, DUR - el).toFixed(1)} s · recta ${inZone.toFixed(1)} s`;
+        box.classList.toggle('ok', ok);
+        if (Math.abs(angle) > 70) { SFX.buzzer(); vib([80, 50, 100]); return finish(inZone / DUR, `¡Se ha volado! Aguantó recta ${inZone.toFixed(1)} s.`); }
+        if (el >= DUR) { SFX.fanfare(); vib([30, 40, 60, 100]); return finish(Math.min(1, inZone / (DUR * 0.85)), `Aguantó recta ${inZone.toFixed(1)} de ${DUR} s.`); }
         raf = requestAnimationFrame(loop);
       };
       raf = requestAnimationFrame(loop);
-      cleanup = () => { cancelAnimationFrame(raf); window.removeEventListener('deviceorientation', onTilt); box.removeEventListener('pointerdown', pd); box.removeEventListener('pointermove', pm); window.removeEventListener('pointerup', up); };
+      cleanup = () => { cancelAnimationFrame(raf); ctrl.removeEventListener('pointerdown', pd); box.removeEventListener('pointerdown', bd); box.removeEventListener('pointermove', bm); window.removeEventListener('pointerup', pu); window.removeEventListener('pointercancel', pu); };
       return null;
     },
     // Que no se despierte nadie (secreto del Joputa): la lógica está en sigilo.js
@@ -1695,7 +2559,7 @@ function openGame(kind, opts = {}) {
       };
       const tryAdd = (c) => {
         if (doneFlag || c == null) return;
-        if (!route.length) { if (num.get(c) === 1) { route = [c]; draw(); } return; }
+        if (!route.length) { if (num.get(c) === 1) { route = [c]; SFX.click(); vib(10); draw(); } return; }
         const head = route.at(-1);
         if (c === head) return;
         if (route.length > 1 && c === route.at(-2)) { route.pop(); draw(); return; }        // volver atrás
@@ -1703,9 +2567,9 @@ function openGame(kind, opts = {}) {
         if (at >= 0) { route = route.slice(0, at + 1); draw(); return; }                       // recortar hasta ahí
         if (!nb(head).includes(c)) return;
         if (num.has(c) && num.get(c) !== nextNum()) return;                                   // los números, en orden
-        route.push(c); draw();
+        route.push(c); SFX.click(); vib(8); draw();
         if (route.length === CELLS && num.get(c) === LAST) {
-          doneFlag = true; const t = (performance.now() - t0) / 1000;
+          doneFlag = true; SFX.fanfare(); vib([30, 40, 80]); const t = (performance.now() - t0) / 1000;
           finish(t <= 25 ? 1 : Math.max(0.15, 1 - (t - 25) / 95), `¡Ruta completa en ${Math.round(t)} s!`);
         }
       };
@@ -1806,13 +2670,14 @@ function openGame(kind, opts = {}) {
       const placed = new Map(); let sel = null;                     // pieza -> celdas que ocupa
       const occ = () => { const m = new Map(); for (const [pi, cs] of placed) for (const c of cs) m.set(c, pi); return m; };
       const hue = (i) => `hsl(${(i * 67) % 360} 70% 62%)`;
+      const sitter = new Map([...blocked].map((cb) => [cb, AVATARS[Math.floor(rnd() * AVATARS.length)]]));
       stage.innerHTML = '<div class="pool"><div class="pool-grid"></div><div class="tray"></div><div class="zip-time">0 s</div></div>';
       ctrl.innerHTML = '<button class="btn ghost block" data-rot>↻ Girar toalla</button>';
       const grid = stage.querySelector('.pool-grid'); const tray = stage.querySelector('.tray'); const clock = stage.querySelector('.zip-time');
       const t0 = performance.now(); const timer = setInterval(() => { clock.textContent = `${Math.floor((performance.now() - t0) / 1000)} s`; }, 250);
       const render = () => {
         const o = occ();
-        grid.innerHTML = Array.from({ length: cellsN }, (_, c) => `<button class="pc ${blocked.has(c) ? 'blk' : ''}" data-c="${c}" style="${o.has(c) ? `background:${hue(o.get(c))}` : ''}">${blocked.has(c) ? '🧍' : ''}</button>`).join('');
+        grid.innerHTML = Array.from({ length: cellsN }, (_, c) => `<button class="pc ${blocked.has(c) ? 'blk' : ''}" data-c="${c}" style="${o.has(c) ? `background:${hue(o.get(c))}` : ''}">${blocked.has(c) ? `<img src="${IMG(sitter.get(c))}" alt="">` : ''}</button>`).join('');
         tray.innerHTML = shapes.map((sh, i) => placed.has(i) ? '' : `<button class="piece ${sel === i ? 'sel' : ''}" data-p="${i}" style="--w:${Math.max(...sh.map((p) => p[1])) + 1};--h:${Math.max(...sh.map((p) => p[0])) + 1}">${sh.map(([r, c]) => `<i style="grid-row:${r + 1};grid-column:${c + 1};background:${hue(i)}"></i>`).join('')}</button>`).join('');
       };
       const onClick = (e) => {
@@ -1832,9 +2697,10 @@ function openGame(kind, opts = {}) {
           if (cand.some((x) => blocked.has(x) || o.has(x))) continue;
           ids = cand; break;
         }
-        if (!ids) { cb.classList.add('nope'); setTimeout(() => cb.classList.remove('nope'), 250); return; }
-        placed.set(sel, ids); sel = shapes.findIndex((_, i) => !placed.has(i)); if (sel < 0) sel = null; render();
+        if (!ids) { cb.classList.add('nope'); SFX.thud(); vib(30); setTimeout(() => cb.classList.remove('nope'), 250); return; }
+        placed.set(sel, ids); SFX.coin(); vib(20); sel = shapes.findIndex((_, i) => !placed.has(i)); if (sel < 0) sel = null; render();
         if (placed.size === shapes.length) {
+          SFX.fanfare(); vib([30, 40, 80]);
           const t = (performance.now() - t0) / 1000;
           finish(t <= 30 ? 1 : Math.max(0.15, 1 - (t - 30) / 90), `¡Todas colocadas en ${Math.round(t)} s!`);
         }
@@ -1889,49 +2755,144 @@ function openGame(kind, opts = {}) {
       const pu = () => {
         if (a == null) return;
         const str = line.map((k) => grid[k]).join(''); const rev = [...str].reverse().join('');
-        const hit = words.find((o) => !o.found && (o.x === str || o.x === rev) && o.cells.length === line.length);
-        if (hit) { hit.found = true; hit.cells.forEach((k) => cellsEl[k].classList.add('found')); drawList(); }
+        if (hit) {
+          hit.found = true;
+          hit.cells.forEach((k) => cellsEl[k].classList.add('found'));
+          drawList();
+          SFX.coin();
+          vib([20, 30, 20]);
+        }
         a = null; line = []; paint();
-        if (words.every((o) => o.found)) { const t = (performance.now() - t0) / 1000; finish(t <= 45 ? 1 : Math.max(0.15, 1 - (t - 45) / 135), `¡Todas en ${Math.round(t)} s!`); }
+        if (words.every((o) => o.found)) {
+          SFX.fanfare();
+          const t = (performance.now() - t0) / 1000;
+          finish(t <= 45 ? 1 : Math.max(0.15, 1 - (t - 45) / 135), `¡Todas en ${Math.round(t)} s!`);
+        }
       };
       g.addEventListener('pointerdown', pd); g.addEventListener('pointermove', pm); window.addEventListener('pointerup', pu);
       goBtn.textContent = 'Rendirse';
       cleanup = () => { clearInterval(timer); g.removeEventListener('pointerdown', pd); g.removeEventListener('pointermove', pm); window.removeEventListener('pointerup', pu); };
       return () => { const f = words.filter((o) => o.found).length; finish(0.5 * f / words.length, `Te has rendido con ${f} de ${words.length} palabras.`); };
     },
-    // Encestar en la papelera: tirachinas con gravedad y viento, 5 tiros
+    // Encestar en la papelera: parábola realista con giro de papel, viento y rebote en aro
     papelera() {
       const SHOTS = 5; let shot = 0; let hits = 0; let raf = 0; let flying = false;
-      stage.innerHTML = '<div class="throw"><div class="wind"></div><div class="bin">🗑️</div><div class="paper">📄</div><div class="aim"></div><div class="cnt"></div></div>';
+      stage.innerHTML = `<div class="throw">
+        <div class="wind"></div>
+        <div class="bin">${SVG_BIN}</div>
+        <svg class="aim-arc" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path class="aim-path" d="" fill="none" stroke="rgba(255, 235, 120, 0.85)" stroke-width="2.2" stroke-dasharray="3 3" stroke-linecap="round"/>
+          <circle class="aim-target" cx="-50" cy="-50" r="2.6" fill="#ff922b" stroke="#ffffff" stroke-width="1.2"/>
+        </svg>
+        <div class="paper">${SVG_PAPER}</div>
+        <div class="cnt"></div>
+      </div>`;
       const box = stage.querySelector('.throw'); const bin = stage.querySelector('.bin'); const paper = stage.querySelector('.paper');
-      const windEl = stage.querySelector('.wind'); const aim = stage.querySelector('.aim'); const cnt = stage.querySelector('.cnt');
-      const plan = Array.from({ length: SHOTS }, (_, k) => ({ bx: rnd() < 0.5 ? 0.12 + rnd() * 0.24 : 0.64 + rnd() * 0.24, wind: (rnd() * 2 - 1) * (0.25 + k * 0.12) }));
+      const windEl = stage.querySelector('.wind'); const cnt = stage.querySelector('.cnt');
+      const aimPath = stage.querySelector('.aim-path'); const aimTarget = stage.querySelector('.aim-target');
+      const plan = Array.from({ length: SHOTS }, (_, k) => ({ bx: rnd() < 0.5 ? 0.12 + rnd() * 0.14 : 0.74 + rnd() * 0.14, by: 0.32 + rnd() * 0.2, wind: (rnd() * 2 - 1) * (0.25 + k * 0.12) }));
       let cur; let p; let start = null;
       const setup = () => {
         if (shot >= SHOTS) return finish(hits / SHOTS, `${hits} de ${SHOTS} canastas.`);
         cur = plan[shot]; p = { x: 0.5, y: 0.86 };
-        bin.style.left = `${cur.bx * 100}%`;
-        windEl.textContent = `Viento ${cur.wind > 0.03 ? '→' : cur.wind < -0.03 ? '←' : '·'} ${Math.abs(Math.round(cur.wind * 10))}`;
-        cnt.textContent = `Tiro ${shot + 1} de ${SHOTS} · canastas ${hits}`;
-        paper.style.left = `${p.x * 100}%`; paper.style.top = `${p.y * 100}%`; paper.className = 'paper';
+        bin.className = 'bin';
+        bin.style.left = `${cur.bx * 100}%`; bin.style.top = `${cur.by * 100}%`;
+        const wDir = cur.wind > 0.03 ? '➜' : cur.wind < -0.03 ? '⬅' : '·';
+        windEl.textContent = `Viento ${wDir} ${Math.abs(Math.round(cur.wind * 10))}`;
+        cnt.textContent = `Tiro ${shot + 1} de ${SHOTS} · Canastas: ${hits}`;
+        paper.className = 'paper';
+        paper.style.left = `${p.x * 100}%`; paper.style.top = `${p.y * 100}%`;
+        paper.style.transform = 'translate(-50%, -50%) rotate(0deg) scale(1)';
+        aimPath.setAttribute('d', '');
+        aimTarget.style.display = 'none';
       };
       const rect = () => box.getBoundingClientRect();
       const pd = (e) => { if (flying || state !== 'running') return; e.preventDefault(); start = { x: e.clientX, y: e.clientY }; box.setPointerCapture?.(e.pointerId); };
-      const pm = (e) => { if (!start) return; const dx = start.x - e.clientX; const dy = start.y - e.clientY; aim.style.cssText = `left:${p.x * 100}%;top:${p.y * 100}%;width:${Math.hypot(dx, dy)}px;transform:rotate(${Math.atan2(dy, dx)}rad)`; };
+      const pm = (e) => {
+        if (!start) return;
+        const dx = start.x - e.clientX; const dy = start.y - e.clientY;
+        const r = rect();
+        const vx = (dx / r.width) * 3.2; const vy = (dy / r.height) * 3.4;
+        if (Math.hypot(vx, vy) >= 0.12) {
+          const pts = [{ x: p.x, y: p.y }];
+          let simX = p.x; let simY = p.y; let simVx = vx; let simVy = vy;
+          const simDt = 0.04; let crossedPt = null;
+          for (let i = 1; i <= 24; i++) {
+            simVx += cur.wind * 0.9 * simDt;
+            simVy += 1.7 * simDt;
+            const prevY = simY;
+            simX += simVx * simDt;
+            simY += simVy * simDt;
+            pts.push({ x: simX, y: simY });
+            if (!crossedPt && simVy > 0 && prevY < cur.by && simY >= cur.by) crossedPt = { x: simX, y: simY };
+            if (simY > 1.05 || simX < -0.15 || simX > 1.15) break;
+          }
+          const d = pts.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${(pt.x * 100).toFixed(1)} ${(pt.y * 100).toFixed(1)}`).join(' ');
+          aimPath.setAttribute('d', d);
+          if (crossedPt) {
+            aimTarget.setAttribute('cx', (crossedPt.x * 100).toFixed(1));
+            aimTarget.setAttribute('cy', (crossedPt.y * 100).toFixed(1));
+            aimTarget.style.display = 'block';
+          } else {
+            aimTarget.style.display = 'none';
+          }
+          paper.style.transform = `translate(-50%, -50%) rotate(${Math.round((Math.atan2(dy, dx) * 180) / Math.PI)}deg) scale(1.05)`;
+        } else {
+          aimPath.setAttribute('d', '');
+          aimTarget.style.display = 'none';
+          paper.style.transform = 'translate(-50%, -50%) rotate(0deg) scale(1)';
+        }
+      };
       const pu = (e) => {
         if (!start) return;
-        const r = rect(); const vx = ((start.x - e.clientX) / r.width) * 2.6; const vy = ((start.y - e.clientY) / r.height) * 2.6; start = null; aim.style.cssText = '';
-        if (Math.hypot(vx, vy) < 0.15) return;
-        flying = true; let last = 0; let v = { x: vx, y: vy };
+        const dx = start.x - e.clientX; const dy = start.y - e.clientY;
+        const r = rect(); const vx = (dx / r.width) * 3.2; const vy = (dy / r.height) * 3.4;
+        start = null; aimPath.setAttribute('d', ''); aimTarget.style.display = 'none';
+        if (Math.hypot(vx, vy) < 0.15) { paper.style.transform = 'translate(-50%, -50%) rotate(0deg) scale(1)'; return; }
+        flying = true; let last = 0; const v = { x: vx, y: vy };
+        let rot = (Math.atan2(dy, dx) * 180) / Math.PI;
+        let spinSpeed = vx * 620 + cur.wind * 520 + Math.sign(vx || 1) * 350;
+        let rimBounced = false;
         const fly = (t) => {
           const dt = last ? Math.min((t - last) / 1000, 0.05) : 0; last = t;
           v.x += cur.wind * 0.9 * dt; v.y += 1.7 * dt; const py = p.y; p.x += v.x * dt; p.y += v.y * dt;
-          paper.style.left = `${p.x * 100}%`; paper.style.top = `${p.y * 100}%`;
-          if (v.y > 0 && py < 0.8 && p.y >= 0.8 && Math.abs(p.x - cur.bx) < 0.065) { hits += 1; paper.className = 'paper in'; return end(true); }
-          if (p.y > 1.05 || p.x < -0.1 || p.x > 1.1) return end(false);
+          rot += spinSpeed * dt;
+          const depth = Math.max(0, Math.min(1, (0.86 - p.y) / Math.max(0.01, 0.86 - cur.by)));
+          const scale = Math.max(0.55, 1.0 - 0.38 * depth);
+          paper.style.left = `${(p.x * 100).toFixed(2)}%`; paper.style.top = `${(p.y * 100).toFixed(2)}%`;
+          paper.style.transform = `translate(-50%, -50%) rotate(${Math.round(rot)}deg) scale(${scale.toFixed(2)})`;
+          if (!rimBounced && v.y > 0 && py < cur.by && p.y >= cur.by) {
+            const dist = Math.abs(p.x - cur.bx);
+            if (dist <= 0.052) {
+              hits += 1; SFX.coin(); vib([25, 35, 25]);
+              bin.classList.add('basket'); paper.className = 'paper in';
+              return end(true, dist < 0.022 ? '¡Limpia perfecta!' : '¡Canasta!');
+            } else if (dist <= 0.082) {
+              if (dist <= 0.065 && rnd() < 0.45) {
+                hits += 1; bin.classList.add('rim-hit'); SFX.thud(); vib([30, 20, 30]);
+                paper.className = 'paper in';
+                setTimeout(() => { bin.classList.add('basket'); end(true, '¡Toca aro y entra!'); }, 200);
+                return;
+              }
+              rimBounced = true; bin.classList.add('rim-hit'); SFX.thud(); vib(45);
+              v.x = (p.x < cur.bx ? -1 : 1) * (0.35 + rnd() * 0.25);
+              v.y = -0.55 - rnd() * 0.3;
+              spinSpeed = (v.x < 0 ? -1 : 1) * 950;
+              cnt.textContent = '¡Aro! Rebota fuera…';
+            }
+          }
+          if (p.y > 1.08 || p.x < -0.15 || p.x > 1.15) {
+            if (!rimBounced) SFX.thud();
+            return end(false, 'Fuera…');
+          }
           raf = requestAnimationFrame(fly);
         };
-        const end = (ok) => { cnt.textContent = ok ? '¡Dentro!' : 'Fuera…'; shot += 1; setTimeout(() => { flying = false; setup(); }, 650); };
+        const end = (ok, label) => {
+          cancelAnimationFrame(raf);
+          cnt.textContent = label || (ok ? '¡Dentro!' : 'Fuera…');
+          shot += 1;
+          setTimeout(() => { flying = false; setup(); }, 750);
+        };
         raf = requestAnimationFrame(fly);
       };
       box.addEventListener('pointerdown', pd); box.addEventListener('pointermove', pm); window.addEventListener('pointerup', pu);
@@ -1963,6 +2924,15 @@ const ACTIONS = {
   menu: () => openSheet('menu'),
   help: () => openSheet('help'),
   asalto: (v) => act('jp_asalto', { p_target: v }),
+  asaltoBetray: (v) => act('jp_asalto', { p_target: v, p_betray: true }),
+  confirmTraicion: (v) => openSheet('confirmTraicion', v),
+  pactoPropose: (v) => act('jp_pacto_proponer', { p_target: v }),
+  pactoAccept: (v) => act('jp_pacto_responder', { p_pacto: v, p_accept: true }),
+  pactoReject: (v) => act('jp_pacto_responder', { p_pacto: v, p_accept: false }),
+  sheetBounty: (v) => openSheet('bounty', v),
+  putBounty: (v, el) => act('jp_recompensa_poner', { p_target: v, p_amount: Number(el.dataset.amt) }),
+  buyPorra: (v) => act('jp_porra_comprar', { p_number: Number(v) }),
+  chapuzasReparar: (v) => act('jp_chapuzas_reparar', { p_target: v }),
   guardia: (v) => act('jp_guardia', { p_target: v }),
   investigar: () => act('jp_investigar', {}),
   mover: (v) => act('jp_mover', { p_amount: Number(v) }),
@@ -2032,6 +3002,11 @@ const ACTIONS = {
   reparto: (v) => act('jp_reparto', { p_choice: v }),
   replica: (v) => act('jp_replicar', { p_burla: S.st.burla.id, p_option: Number(v) }),
   megafono: () => act('jp_megafono', { p_burla: S.st.burla.id }),
+  sheetPintada: () => openSheet('pintada', 0, null),
+  pintadaTpl: (v, el) => openSheet('pintada', Number(v), el.dataset.t || null),
+  pintadaPickTarget: (v, el) => openSheet('pintada', Number(el.dataset.tpl || 0), v),
+  doPintada: (v, el) => act('jp_pintada', { p_template: Number(el.dataset.tpl), p_target: el.dataset.t || null }),
+  destape: () => showDramaticReveal(),
   pushOn: () => enablePush(),
   pushOff: () => disablePush(),
   share: async (v) => {
@@ -2080,6 +3055,10 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', async (e) => {
+  if (e.target.dataset.act === 'pintadaTpl') {
+    openSheet('pintada', Number(e.target.value), e.target.dataset.t || null);
+    return;
+  }
   if (e.target.dataset.act === 'hogueraPunal') { S.hogueraPunal = e.target.checked; return; }
   if (e.target.dataset.act === 'feature') {
     const r = await rpc('jp_set_feature', { p_group: S.groupId, p_key: e.target.dataset.v, p_on: e.target.checked });
